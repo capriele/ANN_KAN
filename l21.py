@@ -4,6 +4,112 @@ import torch.optim as optim
 import numpy as np
 
 
+class Regularizer:
+    """Base regularizer class similar to Keras"""
+
+    def __call__(self, weight):
+        raise NotImplementedError
+
+    def __mul__(self, other):
+        return ScaledRegularizer(self, other)
+
+    def __rmul__(self, other):
+        return ScaledRegularizer(self, other)
+
+
+class ScaledRegularizer(Regularizer):
+    """Regularizer scaled by a factor"""
+
+    def __init__(self, regularizer, scale):
+        self.regularizer = regularizer
+        self.scale = scale
+
+    def __call__(self, weight):
+        return self.scale * self.regularizer(weight)
+
+
+class L1(Regularizer):
+    """L1 regularization (equivalent to Keras l1)"""
+
+    def __init__(self, l=0.01):
+        self.l = l
+
+    def __call__(self, weight):
+        return self.l * torch.sum(torch.abs(weight))
+
+
+class L2(Regularizer):
+    """L2 regularization (equivalent to Keras l2)"""
+
+    def __init__(self, l=0.01):
+        self.l = l
+
+    def __call__(self, weight):
+        return self.l * torch.sum(weight**2)
+
+
+class L1L2(Regularizer):
+    """L1 + L2 regularization (equivalent to Keras l1_l2)"""
+
+    def __init__(self, l1=0.01, l2=0.01):
+        self.l1 = l1
+        self.l2 = l2
+
+    def __call__(self, weight):
+        l1_loss = self.l1 * torch.sum(torch.abs(weight))
+        l2_loss = self.l2 * torch.sum(weight**2)
+        return l1_loss + l2_loss
+
+
+# Convenience functions (similar to Keras)
+def l1(l=0.01):
+    """L1 regularizer factory function"""
+    return L1(l)
+
+
+def l2(l=0.01):
+    """L2 regularizer factory function"""
+    return L2(l)
+
+
+def l1_l2(l1=0.01, l2=0.01):
+    """L1+L2 regularizer factory function"""
+    return L1L2(l1, l2)
+
+
+# Alternative: Using PyTorch's built-in weight_decay for L2
+class OptimizedL2(Regularizer):
+    """L2 regularizer that works with optimizer's weight_decay"""
+
+    def __init__(self, l=0.01):
+        self.l = l
+        print(
+            f"Note: For L2 regularization, consider using weight_decay={l} in your optimizer instead"
+        )
+
+    def __call__(self, weight):
+        return self.l * torch.sum(weight**2)
+
+
+# Example usage in a neural network
+class RegularizedLinear(nn.Module):
+    """Linear layer with regularization"""
+
+    def __init__(self, in_features, out_features, regularizer=None):
+        super().__init__()
+        self.linear = nn.Linear(in_features, out_features)
+        self.regularizer = regularizer
+
+    def forward(self, x):
+        return self.linear(x)
+
+    def regularization_loss(self):
+        """Compute regularization loss for this layer"""
+        if self.regularizer is not None:
+            return self.regularizer(self.linear.weight)
+        return 0.0
+
+
 class L21Regularization(nn.Module):
     """Regularizer for L21 regularization in PyTorch."""
 
