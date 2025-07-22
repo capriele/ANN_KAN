@@ -142,7 +142,6 @@ class AdvAutoencoder(nn.Module):
             layers.append(self.get_activation(self.nonlinearity))
 
         layers.append(nn.Linear(self.n_neurons, self.stateSize))
-        logging.info(f"\n\nEncoder network {layers}")
         return nn.Sequential(*layers)
 
     def decoderNetwork(self, future=0):
@@ -161,7 +160,6 @@ class AdvAutoencoder(nn.Module):
             constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
             future=future,
         )
-        logging.info(f"\n\nDecoder network {dn}")
         return dn
 
     def bridgeNetwork(self, future=0):
@@ -179,7 +177,6 @@ class AdvAutoencoder(nn.Module):
             affineStruct=self.affineStruct,
             future=future,
         )
-        logging.info(f"\n\nBridge network {bn}")
         return bn
 
     def ANNModel(self):
@@ -196,7 +193,7 @@ class AdvAutoencoder(nn.Module):
             decoder_network=outputEncoder,
             bridge_network=bridgeNetwork,
         )
-        logging.info(f"\nANN {ann}")
+        logging.info(f"\n{ann}")
         return ann, convEncoder, outputEncoder, bridgeNetwork
 
     def get_activation(self, name):
@@ -421,7 +418,7 @@ class AdvAutoencoder(nn.Module):
             logging.info(f"Starting training for {epochs} epochs...")
 
             # Training loop
-            for epoch in range(1):  # range(epochs):
+            for epoch in range(epochs):
                 # Training phase
                 model.train()
                 train_loss = 0.0
