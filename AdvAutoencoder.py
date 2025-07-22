@@ -11,7 +11,7 @@ from l21 import *
 from typing import Optional, Dict, Any, Tuple
 import logging
 from pathlib import Path
-from rep_package.v2.ANNmodel import *
+from ANNmodel import *
 from BridgeNetwork import *
 from DecoderNetwork import *
 
@@ -186,7 +186,7 @@ class AdvAutoencoder(nn.Module):
         bridgeNetwork = self.bridgeNetwork()
         convEncoder = self.encoderNetwork()
         outputEncoder = self.decoderNetwork()
-        ann = ANNModel3(
+        ann = ANNModel(
             strideLen=self.strideLen,
             MaxRange=self.MaxRange,
             N_Y=self.N_Y,
@@ -233,12 +233,12 @@ class AdvAutoencoder(nn.Module):
             torch.tensor(outputVector[: i - offset + 1].copy()),
         )
 
-    def trainModel(self, shuffled: bool = True):
+    def trainModel(self, epochs=150, shuffled: bool = True):
         tmp = self.privateTrainModel(
-            shuffled, None, kFPE=0.0, kAEPrediction=10, kForward=0.3
+            shuffled, None, kFPE=0.0, kAEPrediction=10, kForward=0.3, epochs=epochs
         )
         tmp = self.privateTrainModel(
-            shuffled, tmp, 1, 0.0, 10, "checkpoints", None, 150, 8, 0.001, True
+            shuffled, tmp, 1, 0.0, 10, "checkpoints", None, epochs, 8, 0.001, True
         )
 
     def privateTrainModel(
