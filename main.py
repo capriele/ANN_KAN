@@ -9,7 +9,7 @@ import scipy.io
 import time
 import sys
 from scipy import optimize
-from rep_package.v2.AdvAutoencoder import AdvAutoencoder, DatasetLoadUtility
+from AdvAutoencoder import AdvAutoencoder, DatasetLoadUtility
 from DynamicalSystem import LinearSystem
 from TwoTanks import TwoTanks
 from DummyModel import DummyModel
@@ -69,8 +69,7 @@ class SystemSelectorEnum:
 
     def TWOTANKS(self, non_linear_input_char=False):
         dynamic_model = TwoTanks(Option.nonLinearInputChar)
-        # u, y, u_val, y_val = dynamic_model.prepareDataset(20000, 1000)
-        u, y, u_val, y_val = dynamic_model.prepareDataset(2000, 1000)
+        u, y, u_val, y_val = dynamic_model.prepareDataset(20000, 1000)
         return dynamic_model, u, y, u_val, y_val
 
     def BILINEAR(self, non_linear_input_char=False):
@@ -101,15 +100,18 @@ class Options:
         self.enablePlot = False
         self.stateSize = 6
         self.outputWindowLen = 2
-        self.n_layers = 1  # 3
-        self.n_neurons = 2  # 30
+        self.n_layers = 3
+        self.n_neurons = 30
+        self.epochs = 150
+
 
 if __name__ == "__main__":
     freeze_support()
     Option = Options()
 
     # %% Parameter parsing
-    print("para", sys.argv)
+    print("Epochs", Option.epochs)
+    print("Parameters", sys.argv)
     sys.argv = ["rep_package/v2/main.py", "1", "5", "1", "1", "6", "10", "1", "0"]
     if len(sys.argv) > 2:
         Option.fitHorizon = int(sys.argv[2])
@@ -133,8 +135,8 @@ if __name__ == "__main__":
 
         Option.stringDynamicalSystemSelector = (
             str(Option.dynamicalSystemSelector)
-            .replace("<function systemSelectorEnum.", "")
-            .split(" at ")[0]
+            .replace("<bound method SystemSelectorEnum.", "")
+            .split(" of ")[0]
         )
         print(int(sys.argv[3]))
 
@@ -197,14 +199,14 @@ if __name__ == "__main__":
     model.setDataset(U_n.copy(), Y_n.copy(), U_Vn.copy(), Y_Vn.copy())
 
     inputU, inputY = model.prepareDataset()
-    model.trainModel()
+    model.trainModel(epochs=Option.epochs)
     (
         predictedLeft,
         stateLeft,
         oneStepAheadPredictionError,
         forwardedPredictedError,
         forwardError,
-    ) = model.model.forward_sequence({"input_y": inputY, "input_u": inputU})
+    ) = model.model(inputY, inputU)
 
     # %% Functions definition
     def prepareMatrices(uSequence, x0):
@@ -214,11 +216,11 @@ if __name__ == "__main__":
 
         for u in uSequence:
             u = np.reshape(u, (1, 1))
-            x0 = model.model.bridgeNetwork(
+            x0 = model.model.bridge_network(
                 torch.tensor(u, dtype=torch.float32),
                 torch.tensor(x0, dtype=torch.float32),
             )
-            y = model.model.outputEncoder(x0[0])
+            y = model.model.output_decoder(x0[0])
             logY += [y]
             logX += [x0]
             x0 = x0[0]
@@ -261,11 +263,12 @@ if __name__ == "__main__":
                 logC[i][1] = logC[i][1].detach().numpy()
 
             asda = np.reshape(asda, (1 + Option.stateSize, 1))
-            x0 = np.dot(logAB[i][1], asda)
-            x0 = x0 + logAB[i][2].T
+            x0 = np.dot(logAB[i][1], asda).T
+            x0 = x0.squeeze()
+            x0 = np.reshape(x0, (1, Option.stateSize))
 
             # TODO: reshape a 2 x 6 ((out size) x (state size))
-            y = np.dot(logC[i][0].squeeze(0), x0)
+            y = np.dot(logC[i][0].squeeze(), x0.T)
             logY += [y[0][-1]]
             i = i + 1
         #    logY+=[y[0][1]]
@@ -283,7 +286,7 @@ if __name__ == "__main__":
         from matplotlib.ticker import MaxNLocator
 
         if not Option.stateReduction:
-            w = model.model.convEncoder.get_layer("enc00").get_weights()
+            w = model.model.conv_encoder.get_layer("enc00").get_weights()
             ax = plt.figure(figsize=[8, 2]).gca()
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             neuronsCount = np.sum(abs(w[0]) > 1e-3, 1)
@@ -298,8 +301,8 @@ if __name__ == "__main__":
             plt.tight_layout()
 
         else:
-            w1 = model.model.bridgeNetwork.get_layer("bridge00").get_weights()
-            w = model.model.outputEncoder.get_layer("dec00").get_weights()
+            w1 = model.model.bridge_network.get_layer("bridge00").get_weights()
+            w = model.model.output_decoder.get_layer("dec00").get_weights()
             neuronsCount = np.sum(abs(w1[0][0:-1]) > 1e-3, 1)
             yAxis = range(0, len(neuronsCount))
             print(neuronsCount, "bridge=>")
@@ -322,18 +325,14 @@ if __name__ == "__main__":
         validationOnMultiHarmonic=True, _reset=-1, YTrue=None, U_Vn=None
     ):
         openLoopStartingPoint = Option.openLoopStartingPoint
-        pastY = np.zeros((1, model.strideLen))
-        pastU = np.zeros((1, model.strideLen))
+        pastY = np.zeros((model.strideLen, 1))
+        pastU = np.zeros((model.strideLen, 1))
         if YTrue is None:
             x0RealSystem = np.zeros((simulatedSystem.stateSize,))
 
-        x0 = model.model.convEncoder(
-            torch.cat(
-                [
-                    torch.tensor(pastY.T, dtype=torch.float32),
-                    torch.tensor(pastU.T, dtype=torch.float32),
-                ]
-            ).T  ## Need to transpose (20x1) to (1x20) for the model (matrix multiplication)
+        x0 = model.model.conv_encoder(
+            torch.tensor(pastY, dtype=torch.float32).T,
+            torch.tensor(pastU, dtype=torch.float32).T,
         )
         logY = []
         logU = []
@@ -352,24 +351,20 @@ if __name__ == "__main__":
                 y_kReal = YTrue[i]
                 u = [U_Vn[i]]
 
-            pastU = np.reshape(np.append(pastU, u)[1:], (1, model.strideLen))
-            pastY = np.reshape(np.append(pastY, y_kReal)[1:], (1, model.strideLen))
+            pastU = np.reshape(np.append(pastU, u)[1:], (model.strideLen, 1))
+            pastY = np.reshape(np.append(pastY, y_kReal)[1:], (model.strideLen, 1))
             if i < openLoopStartingPoint or (i % _reset == 0 and _reset > 0):
-                x0 = model.model.convEncoder(
-                    torch.cat(
-                        [
-                            torch.tensor(pastY.T, dtype=torch.float32),
-                            torch.tensor(pastU.T, dtype=torch.float32),
-                        ]
-                    ).T  ## Need to transpose (20x1) to (1x20) for the model (matrix multiplication)
+                x0 = model.model.conv_encoder(
+                    torch.tensor(pastY, dtype=torch.float32).T,
+                    torch.tensor(pastU, dtype=torch.float32).T,
                 )
                 print("*", end="")
             else:
-                x0 = model.model.bridgeNetwork(
+                x0 = model.model.bridge_network(
                     torch.tensor(u, dtype=torch.float32),
                     torch.tensor(x0, dtype=torch.float32),
                 )[0]
-            y = model.model.outputEncoder(x0)[1]
+            y = model.model.output_decoder(x0)[1]
             if i >= openLoopStartingPoint:
                 logY += [(y[0][-2]).detach().numpy()]
                 logYR += [y_kReal[0]]
@@ -439,13 +434,9 @@ if __name__ == "__main__":
         pastY = np.zeros((model.strideLen, 1))
         pastU = np.zeros((model.strideLen, 1))
         x0RealSystem = np.zeros((simulatedSystem.stateSize,))
-        x0 = model.model.convEncoder(
-            torch.cat(
-                [
-                    torch.tensor(pastY, dtype=torch.float32),
-                    torch.tensor(pastU, dtype=torch.float32),
-                ]
-            ).T  ## Need to transpose (20x1) to (1x20) for the model (matrix multiplication)
+        x0 = model.model.conv_encoder(
+            torch.tensor(pastY, dtype=torch.float32).T,
+            torch.tensor(pastU, dtype=torch.float32).T,
         )
         bounds = [(-0.8, 0.8) for i in range(0, MPCHorizon)]
         #    bounds=[(-1,1) for i in range(0,MPCHorizon)]
@@ -453,13 +444,9 @@ if __name__ == "__main__":
         start = time.time()
         logY += [0]
         for i in range(0, 400):
-            x0 = model.model.convEncoder(
-                torch.cat(
-                    [
-                        torch.tensor(pastY, dtype=torch.float32),
-                        torch.tensor(pastU, dtype=torch.float32),
-                    ]
-                ).T  ## Need to transpose (20x1) to (1x20) for the model (matrix multiplication)
+            x0 = model.model.conv_encoder(
+                torch.tensor(pastY, dtype=torch.float32).T,
+                torch.tensor(pastU, dtype=torch.float32).T,
             )
             r = [
                 0.7 * np.array([[np.sin(j / (20 + 0.01 * j))]]) + 0.7
@@ -546,7 +533,7 @@ if __name__ == "__main__":
 
     print(Option.__dict__)
     scipy.io.matlab.savemat(
-        "dump{0}{1}.mat".format(
+        "dump_{0}_{1}.mat".format(
             Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
         ),
         {
