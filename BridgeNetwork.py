@@ -61,7 +61,7 @@ class BridgeNetwork(nn.Module):
 
     def forward(self, inputs_novelU, inputs_state):
         # Concatenate inputs
-        inputConcat = torch.cat([inputs_state, inputs_novelU], dim=-1)
+        inputConcat = torch.cat([inputs_state.float(), inputs_novelU.float()], dim=-1)
 
         # First layer
         x = self.bridge0(inputConcat)

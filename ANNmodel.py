@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -8,319 +9,156 @@ class ANNModel(nn.Module):
 
     def __init__(
         self,
-        strideLen,
-        MaxRange,
-        N_Y,
-        N_U,
-        outputWindowLen,
+        stride_len,
+        max_range,
+        n_y,
+        n_u,
+        output_window_len,
         encoder_network,
         decoder_network,
         bridge_network,
     ):
         super(ANNModel, self).__init__()
 
-        self.strideLen = strideLen
-        self.MaxRange = MaxRange
-        self.N_Y = N_Y
-        self.N_U = N_U
-        self.outputWindowLen = outputWindowLen
+        self.stride_len = stride_len
+        self.max_range = max_range
+        self.n_y = n_y
+        self.n_u = n_u
+        self.output_window_len = output_window_len
 
-        # Store the component networks
-        self.convEncoder = encoder_network
-        self.outputEncoder = decoder_network
-        self.bridgeNetwork = bridge_network
+        # Store the network components
+        self.conv_encoder = encoder_network
+        self.output_decoder = decoder_network
+        self.bridge_network = bridge_network
 
-        # Initialize state tracking
-        self.reset_state()
-
-    def reset_state(self):
-        """Reset the internal state for a new sequence"""
-        self.forwarded_states = None
-        self.step_count = 0
-
-    def forward(self, inputs, step_k=None):
+    def forward(self, inputs_y, inputs_u):
         """
-        Process a single time step k.
-        Fixed version that preserves gradients properly.
+        Forward pass of the ANN model
+
+        Args:
+            inputs_y: Input tensor of shape (batch_size, (stride_len + max_range) * n_y)
+            inputs_u: Input tensor of shape (batch_size, (stride_len + max_range) * n_u)
+
+        Returns:
+            tuple: (predicted_ok_first, state_k_first, one_step_error, forwarded_error, forward_error)
         """
-        inputs_Y = inputs["input_y"]
-        inputs_U = inputs["input_u"]
+        batch_size = inputs_y.size(0)
 
-        # Use provided step or internal counter
-        if step_k is not None:
-            k = step_k
-        else:
-            k = self.step_count
-            self.step_count += 1
+        prediction_error_collection = []
+        forward_error_collection = []
+        forwarded_predicted_error_collection = []
+        predicted_ok_collection = []
+        state_k_collection = []
 
-        batch_size = inputs_Y.size(0)
-        device = inputs_Y.device
+        forwarded_state = None
 
-        # Extract slices for current step k
-        IYk = inputs_Y[:, k : self.strideLen + k].float()
-        IUk = inputs_U[:, k : self.strideLen + k].float()
-
-        # Extract target slice
-        target_start = self.strideLen + k - self.outputWindowLen + 1
-        target_end = self.strideLen + k + 1
-        ITargetk = inputs_Y[:, target_start:target_end].float()
-
-        # Extract novel input
-        novelIUk = inputs_U[:, self.strideLen + k : self.strideLen + k + 1].float()
-
-        # Forward pass through encoder
-        stateK = self.convEncoder(torch.cat([IYk, IUk], dim=1))
-
-        # Prepare all states for single network calls
-        if self.forwarded_states is not None:
-            # Create fresh tensors from stored states to avoid version conflicts
-            # The stored states are detached, but we need them with gradients for current computation
-            forwarded_states_with_grad = []
-            for stored_state in self.forwarded_states:
-                # Create a new tensor that requires gradients, based on the stored state
-                state_with_grad = stored_state.clone().detach().requires_grad_(True)
-                forwarded_states_with_grad.append(state_with_grad)
-
-            # Stack all states: current state + all forwarded states
-            # Use torch.stack instead of torch.cat for better gradient flow
-            all_states = torch.stack([stateK] + forwarded_states_with_grad, dim=0)
-
-            # Reshape for batch processing while preserving gradients
-            all_states_reshaped = all_states.view(-1, all_states.shape[-1])
-
-            # SINGLE CALL to outputEncoder for all states
-            all_decoder_outputs = self.outputEncoder(all_states_reshaped)
-            all_predictions = (
-                all_decoder_outputs[1]
-                if isinstance(all_decoder_outputs, (list, tuple))
-                else all_decoder_outputs
-            )
-
-            # Reshape back to separate predictions
-            all_predictions = all_predictions.view(
-                len(self.forwarded_states) + 1, batch_size, -1
-            )
-
-            # Split predictions using tensor indexing that preserves gradients
-            predictedOK = all_predictions[0]  # Current prediction
-            forwarded_predictions = all_predictions[1:]  # All forwarded predictions
-
-            # Calculate prediction errors
-            predictionErrork = torch.abs(predictedOK - ITargetk)
-
-            # Calculate forwarded predicted errors using vectorized operations
-            num_forwarded = len(self.forwarded_states)
-            if num_forwarded > 0:
-                # Expand target for broadcasting
-                ITargetk_expanded = ITargetk.unsqueeze(0).expand(num_forwarded, -1, -1)
-                forwarded_predicted_errors = forwarded_predictions - ITargetk_expanded
-
-                # Store individual errors for later use
-                forwarded_predicted_errors_list = [
-                    forwarded_predicted_errors[i] for i in range(num_forwarded)
-                ]
-            else:
-                forwarded_predicted_errors_list = []
-
-            # Prepare bridge network inputs
-            # Expand novel input for all states
-            expanded_novel_input = novelIUk.unsqueeze(0).expand(
-                1 + num_forwarded, -1, -1
-            )
-
-            # Concatenate inputs for bridge network
-            bridge_inputs = torch.cat([expanded_novel_input, all_states], dim=-1)
-
-            # Reshape for network processing
-            # bridge_inputs_flat = bridge_inputs.view(-1, bridge_inputs.shape[-1])
-
-            # SINGLE CALL to bridgeNetwork for all states
-            all_bridge_outputs = self.bridgeNetwork(expanded_novel_input, all_states)
-            all_updated_states = (
-                all_bridge_outputs[0]
-                if isinstance(all_bridge_outputs, (list, tuple))
-                else all_bridge_outputs
-            )
-
-            # Reshape back to separate states
-            all_updated_states = all_updated_states.view(
-                1 + num_forwarded, batch_size, -1
-            )
-
-            # Split updated states using tensor indexing
-            new_forwarded_from_current = all_updated_states[0]
-            updated_forwarded_states = [
-                all_updated_states[i + 1] for i in range(num_forwarded)
-            ]
-
-            # Update forwarded states list - detach from computational graph to avoid in-place issues
-            # Only the computation matters for gradients, not the stored states
-            with torch.no_grad():
-                self.forwarded_states = [new_forwarded_from_current.detach()] + [
-                    state.detach() for state in updated_forwarded_states
-                ]
-
-            # Calculate forward errors using vectorized operations
-            if len(self.forwarded_states) > 1:
-                # Stack forwarded states (excluding the new one from current step)
-                old_forwarded_states = torch.stack(self.forwarded_states[1:], dim=0)
-                # Expand current state for broadcasting
-                stateK_expanded = stateK.unsqueeze(0).expand(
-                    len(self.forwarded_states) - 1, -1, -1
-                )
-                # Calculate errors
-                forward_errors = torch.abs(stateK_expanded - old_forwarded_states)
-                forwardError = forward_errors.mean(dim=0)
-            else:
-                forwardError = torch.abs(stateK - new_forwarded_from_current)
-
-            # Aggregate forwarded predicted errors
-            if forwarded_predicted_errors_list:
-                forwardedPredictedError = torch.stack(
-                    forwarded_predicted_errors_list, dim=0
-                ).mean(dim=0)
-            else:
-                forwardedPredictedError = predictedOK - ITargetk
-
-        else:
-            # First step: single calls for initialization
-            # SINGLE CALL to outputEncoder
-            encoder_output = self.outputEncoder(stateK)
-            predictedOK = (
-                encoder_output[1]
-                if isinstance(encoder_output, (list, tuple))
-                else encoder_output
-            )
-
-            # Calculate prediction error
-            predictionErrork = torch.abs(predictedOK - ITargetk)
-
-            # SINGLE CALL to bridgeNetwork
-            bridge_output = self.bridgeNetwork(novelIUk, stateK)
-            forwardedState = (
-                bridge_output[0]
-                if isinstance(bridge_output, (list, tuple))
-                else bridge_output
-            )
-
-            # Store the forwarded state detached from computational graph
-            with torch.no_grad():
-                self.forwarded_states = [forwardedState.detach()]
-
-            # Calculate forward error and forwarded predicted error
-            forwardError = torch.abs(stateK - forwardedState)
-            forwardedPredictedError = predictedOK - ITargetk
-
-        # Initialize output dictionary
-        outputs = {
-            "functional_1": predictedOK,
-            "functional_2": stateK,
-            "oneStepDecoderError": predictionErrork,
-            "multiStep_decodeError": forwardedPredictedError,
-            "forwardError": forwardError,
-        }
-
-        return outputs
-
-    def forward_sequence_vectorized(self, inputs):
-        """
-        Vectorized version that processes all time steps at once.
-        More efficient for inference when you need the complete sequence.
-        """
-        self.reset_state()
-
-        inputs_Y = inputs["input_y"]
-        inputs_U = inputs["input_u"]
-        batch_size = inputs_Y.size(0)
-        device = inputs_Y.device
-
-        # Pre-compute all slices for all time steps
-        all_IYk = []
-        all_IUk = []
-        all_ITargetk = []
-        all_novelIUk = []
-
-        for k in range(self.MaxRange):
-            # Extract slices for step k
-            IYk = inputs_Y[:, k : self.strideLen + k]
-            IUk = inputs_U[:, k : self.strideLen + k]
+        for k in range(self.max_range):
+            # Extract input slices for current step k
+            i_yk = inputs_y[:, k : self.stride_len + k]
+            i_uk = inputs_u[:, k : self.stride_len + k]
 
             # Extract target slice
-            target_start = self.strideLen + k - self.outputWindowLen + 1
-            target_end = self.strideLen + k + 1
-            ITargetk = inputs_Y[:, target_start:target_end]
+            target_start = self.stride_len + k - self.output_window_len + 1
+            target_end = self.stride_len + k + 1
+            i_target_k = inputs_y[:, target_start:target_end]
 
             # Extract novel input
-            novelIUk = inputs_U[:, self.strideLen + k : self.strideLen + k + 1]
+            novel_i_uk = inputs_u[:, self.stride_len + k : self.stride_len + k + 1]
 
-            all_IYk.append(IYk)
-            all_IUk.append(IUk)
-            all_ITargetk.append(ITargetk)
-            all_novelIUk.append(novelIUk)
+            # Encode current state
+            state_k = self.conv_encoder(i_yk, i_uk)
 
-        # Stack all inputs for vectorized processing
-        stacked_IYk = torch.stack(all_IYk, dim=0)  # (MaxRange, batch_size, stride_len)
-        stacked_IUk = torch.stack(all_IUk, dim=0)  # (MaxRange, batch_size, stride_len)
-        stacked_inputs = torch.cat(
-            [stacked_IYk, stacked_IUk], dim=-1
-        )  # (MaxRange, batch_size, combined_dim)
+            # Decode to get prediction
+            predicted_ok = self.output_decoder(state_k)
+            if isinstance(predicted_ok, (list, tuple)):
+                predicted_ok = predicted_ok[1]
 
-        # Process all through encoder at once
-        reshaped_inputs = stacked_inputs.view(
-            -1, stacked_inputs.shape[-1]
-        )  # (MaxRange * batch_size, combined_dim)
-        all_states = self.convEncoder(reshaped_inputs)
-        all_states = all_states.view(
-            self.MaxRange, batch_size, -1
-        )  # (MaxRange, batch_size, state_dim)
+            predicted_ok_collection.append(predicted_ok)
+            state_k_collection.append(state_k)
 
-        # Process all through decoder at once
-        reshaped_states = all_states.view(-1, all_states.shape[-1])
-        all_decoder_outputs = self.outputEncoder(reshaped_states)
-        all_predictions = (
-            all_decoder_outputs[1]
-            if isinstance(all_decoder_outputs, (list, tuple))
-            else all_decoder_outputs
-        )
-        all_predictions = all_predictions.view(self.MaxRange, batch_size, -1)
+            # Compute prediction error
+            prediction_error_k = torch.abs(predicted_ok - i_target_k)
+            prediction_error_collection.append(prediction_error_k)
 
-        # Calculate prediction errors
-        stacked_targets = torch.stack(all_ITargetk, dim=0)
-        prediction_errors = torch.abs(all_predictions - stacked_targets)
+            # Handle forward prediction
+            if forwarded_state is not None:
+                forwarded_state_n = []
 
-        # For simplicity, return the last step's outputs (you can modify as needed)
-        return {
-            "functional_1": all_predictions[-1],
-            "functional_2": all_states[-1],
-            "oneStepDecoderError": prediction_errors,
-            "multiStep_decodeError": prediction_errors,  # Simplified
-            "forwardError": torch.zeros_like(all_states[-1]),  # Simplified
-        }
+                # Add bridge network output for current state
+                bridge_output = self.bridge_network(novel_i_uk, state_k)
+                if isinstance(bridge_output, (list, tuple)):
+                    bridge_output = bridge_output[0]
+                forwarded_state_n.append(bridge_output)
 
-    def forward_sequence(self, inputs):
-        """
-        Process a complete sequence using single-step forward calls.
-        This maintains the exact same behavior as the original implementation.
-        """
-        self.reset_state()
-        all_outputs = []
+                # Process each forwarded state
+                for this_f in forwarded_state:
+                    # Compute forward error
+                    if isinstance(state_k, (list, tuple)):
+                        current_state = state_k[0]
+                    else:
+                        current_state = state_k
 
-        for k in range(self.MaxRange):
-            step_outputs = self.forward(inputs, step_k=k)
-            all_outputs.append(step_outputs)
+                    forward_error_k = torch.abs(current_state - this_f)
+                    forward_error_collection.append(forward_error_k)
 
-        # Aggregate outputs across all steps
-        aggregated_outputs = {}
-        for key in all_outputs[0].keys():
-            if key in ["functional_1", "functional_2"]:
-                # Take the last step's output for these
-                aggregated_outputs[key] = all_outputs[-1][key]
+                    # Compute forwarded predicted output
+                    forwarded_predicted_output_k = self.output_decoder(this_f)
+                    if isinstance(forwarded_predicted_output_k, (list, tuple)):
+                        forwarded_predicted_output_k = forwarded_predicted_output_k[1]
+
+                    # Compute forwarded prediction error
+                    forwarded_predicted_error_k = (
+                        forwarded_predicted_output_k - i_target_k
+                    )
+                    forwarded_predicted_error_collection.append(
+                        forwarded_predicted_error_k
+                    )
+
+                    # Add bridge network output for forwarded state
+                    bridge_output_f = self.bridge_network(novel_i_uk, this_f)
+                    if isinstance(bridge_output_f, (list, tuple)):
+                        bridge_output_f = bridge_output_f[0]
+                    forwarded_state_n.append(bridge_output_f)
+
+                forwarded_state = forwarded_state_n
             else:
-                # Stack or concatenate error tensors
-                values = [out[key] for out in all_outputs]
-                if len(values) > 1:
-                    aggregated_outputs[key] = torch.stack(values, dim=0)
-                else:
-                    aggregated_outputs[key] = values[0]
+                # Initialize forwarded state
+                bridge_output = self.bridge_network(novel_i_uk, state_k)
+                if isinstance(bridge_output, (list, tuple)):
+                    bridge_output = bridge_output[0]
+                forwarded_state = [bridge_output]
 
-        return aggregated_outputs
+        # Concatenate prediction errors
+        one_step_ahead_prediction_error = torch.cat(prediction_error_collection, dim=1)
+
+        # Handle forwarded predicted errors
+        if len(forwarded_predicted_error_collection) > 1:
+            forwarded_predicted_error = torch.cat(
+                forwarded_predicted_error_collection, dim=1
+            )
+        elif len(forwarded_predicted_error_collection) == 1:
+            forwarded_predicted_error = torch.abs(
+                forwarded_predicted_error_collection[0]
+            )
+        else:
+            # Create a dummy tensor if no forwarded errors
+            forwarded_predicted_error = torch.zeros_like(
+                one_step_ahead_prediction_error[:, :1]
+            )
+
+        # Handle forward errors
+        if len(forward_error_collection) > 1:
+            forward_error = torch.cat(forward_error_collection, dim=1)
+        elif len(forward_error_collection) == 1:
+            forward_error = torch.abs(forward_error_collection[0])
+        else:
+            # Create a dummy tensor if no forward errors
+            forward_error = torch.zeros_like(one_step_ahead_prediction_error[:, :1])
+
+        return (
+            predicted_ok_collection[0],
+            state_k_collection[0],
+            one_step_ahead_prediction_error,
+            forwarded_predicted_error,
+            forward_error,
+        )

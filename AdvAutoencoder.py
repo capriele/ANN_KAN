@@ -13,6 +13,7 @@ import logging
 from pathlib import Path
 from ANNmodel import *
 from BridgeNetwork import *
+from EncoderNetwork import *
 from DecoderNetwork import *
 
 torch.set_num_threads(8)
@@ -132,17 +133,22 @@ class AdvAutoencoder(nn.Module):
             self.Y_val = Y_val.copy()
 
     def encoderNetwork(self, future=0):
-        layers = []
-        input_size = self.strideLen * (self.N_U + self.N_Y)
-        layers.append(nn.Linear(input_size, self.n_neurons))
-        layers.append(self.get_activation(self.nonlinearity))
-
-        for _ in range(self.n_layer - 1):
-            layers.append(nn.Linear(self.n_neurons, self.n_neurons))
-            layers.append(self.get_activation(self.nonlinearity))
-
-        layers.append(nn.Linear(self.n_neurons, self.stateSize))
-        return nn.Sequential(*layers)
+        en = EncoderNetwork(
+            stride_len=self.strideLen,
+            n_u=self.N_U,
+            n_y=self.N_Y,
+            n_neurons=self.n_neurons,
+            n_layer=self.n_layer,
+            state_size=self.stateSize,
+            nonlinearity=self.nonlinearity,
+            kernel_regularizer=self.kernel_regularizer,
+            constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
+            use_group_lasso=self.useGroupLasso,
+            state_reduction=self.stateReduction,
+            input_layer_regularizer=self.inputLayerRegularizer,
+            future=future,
+        )
+        return en
 
     def decoderNetwork(self, future=0):
         dn = DecoderNetwork(
@@ -184,11 +190,11 @@ class AdvAutoencoder(nn.Module):
         convEncoder = self.encoderNetwork()
         outputEncoder = self.decoderNetwork()
         ann = ANNModel(
-            strideLen=self.strideLen,
-            MaxRange=self.MaxRange,
-            N_Y=self.N_Y,
-            N_U=self.N_U,
-            outputWindowLen=self.outputWindowLen,
+            stride_len=self.strideLen,
+            max_range=self.MaxRange,
+            n_y=self.N_Y,
+            n_u=self.N_U,
+            output_window_len=self.outputWindowLen,
             encoder_network=convEncoder,
             decoder_network=outputEncoder,
             bridge_network=bridgeNetwork,
@@ -297,9 +303,9 @@ class AdvAutoencoder(nn.Module):
                 )
                 model = self.model
                 model.load_state_dict(checkpoint["model_state_dict"])
-                convEncoder = model.convEncoder
-                outputEncoder = model.outputEncoder
-                bridgeNetwork = model.bridgeNetwork
+                convEncoder = model.conv_encoder
+                outputEncoder = model.output_decoder
+                bridgeNetwork = model.bridge_network
                 checkpoint_dir = Path(checkpoint_path)
             else:
                 logging.info("Initializing new model...")
@@ -419,7 +425,9 @@ class AdvAutoencoder(nn.Module):
 
             # Training loop
             for epoch in range(epochs):
-                # Training phase
+                start_time = time.time()
+
+                # === TRAINING PHASE ===
                 model.train()
                 train_loss = 0.0
                 num_batches = 0
@@ -429,78 +437,70 @@ class AdvAutoencoder(nn.Module):
                     batch_input_u,
                     batch_targets,
                 ) in enumerate(train_loader):
-
                     optimizer.zero_grad()
 
-                    """
-                    # Indent back 1 time
-                    outputs = model(
-                        {
-                            "input_y": batch_input_y.detach(),
-                            "input_u": batch_input_u.detach(),
-                        }
-                    )
-                    """
-
                     # Forward pass
-                    model.reset_state()  # Start new sequence
-                    for k in range(self.MaxRange):
-                        outputs = model.forward(
-                            {
-                                "input_y": batch_input_y.detach(),
-                                "input_u": batch_input_u.detach(),
-                            },
-                            step_k=k,
-                        )
+                    outputs = model(batch_input_y.detach(), batch_input_u.detach())
 
-                        # Calculate weighted loss
-                        batch_loss = self.calculate_weighted_loss(
-                            outputs, loss_weights, criterion
-                        )
+                    # Compute loss
+                    output_dict = {
+                        "multiStep_decodeError": outputs[3],
+                        "oneStepDecoderError": outputs[1],
+                        "forwardError": outputs[4],
+                        "functional_1": outputs[0],
+                        "functional_2": outputs[1],
+                    }
+                    batch_loss = self.calculate_weighted_loss(
+                        output_dict, loss_weights, criterion
+                    )
 
-                        # Backward pass
-                        batch_loss.backward(retain_graph=True)
+                    # Backward pass
+                    batch_loss.backward()
 
-                        # Gradient clipping
-                        torch.nn.utils.clip_grad_value_(model.parameters(), 0.5)
+                    # Optional: gradient clipping
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
 
-                        # Optimizer step
-                        optimizer.step()
+                    # Update weights
+                    optimizer.step()
 
-                        # Apply constraints
-                        model.outputEncoder.apply_regularization()
-                        model.outputEncoder.apply_constraints()
+                    # Apply model-specific constraints and regularization
+                    model.output_decoder.apply_regularization()
+                    model.output_decoder.apply_constraints()
+                    model.bridge_network.apply_constraints()
 
-                        # Accumulate loss
-                        train_loss = train_loss + batch_loss.detach().item()
-                        num_batches += 1
+                    # Accumulate loss
+                    train_loss += batch_loss.item()
+                    num_batches += 1
 
                 avg_train_loss = train_loss / max(num_batches, 1)
                 train_losses.append(avg_train_loss)
 
-                # Validation phase
-                avg_val_loss = self._validate_model(
-                    model, val_loader, loss_weights, criterion
-                )
-                val_losses.append(avg_val_loss)
+                # === VALIDATION PHASE ===
+                model.eval()
+                with torch.no_grad():
+                    avg_val_loss = self._validate_model(
+                        model, val_loader, loss_weights, criterion
+                    )
+                    val_losses.append(avg_val_loss)
 
-                # Logging
+                # === LOGGING ===
+                elapsed = time.time() - start_time
                 logging.info(
-                    f"Epoch [{epoch+1:3d}/{epochs}] | "
+                    f"Epoch [{epoch + 1}/{epochs}] | "
                     f"Train Loss: {avg_train_loss:.6f} | "
                     f"Val Loss: {avg_val_loss:.6f} | "
-                    f"LR: {optimizer.param_groups[0]['lr']:.2e}"
+                    f"LR: {optimizer.param_groups[0]['lr']:.2e} | "
+                    f"Time: {elapsed:.1f}s"
                 )
 
-                # Learning rate scheduling
+                # === LEARNING RATE SCHEDULING ===
                 scheduler.step(avg_val_loss)
 
-                # Early stopping and model saving
+                # === EARLY STOPPING & CHECKPOINTING ===
                 if avg_val_loss < best_val_loss - min_delta:
                     best_val_loss = avg_val_loss
                     patience_counter = 0
 
-                    # Save best model
                     if save_best_model and checkpoint_dir:
                         self._save_checkpoint(
                             model,
@@ -510,16 +510,13 @@ class AdvAutoencoder(nn.Module):
                             best_val_loss,
                             checkpoint_dir / "best_model.pth",
                         )
-
                 else:
                     patience_counter += 1
 
-                # Early stopping check
                 if patience_counter >= early_stopping_patience:
-                    logging.info(f"Early stopping triggered after {epoch+1} epochs")
+                    logging.info(f"Early stopping triggered after {epoch + 1} epochs")
                     break
 
-                # Save periodic checkpoint
                 if save_best_model and checkpoint_dir and (epoch + 1) % 10 == 0:
                     self._save_checkpoint(
                         model,
@@ -527,7 +524,7 @@ class AdvAutoencoder(nn.Module):
                         scheduler,
                         epoch,
                         avg_val_loss,
-                        checkpoint_dir / f"checkpoint_epoch_{epoch+1}.pth",
+                        checkpoint_dir / f"checkpoint_epoch_{epoch + 1}.pth",
                     )
 
         except Exception as e:
@@ -593,11 +590,19 @@ class AdvAutoencoder(nn.Module):
         with torch.no_grad():
             for batch_input_y, batch_input_u, batch_targets in val_loader:
                 try:
-                    outputs = model.forward_sequence(
+                    outputs = model(batch_input_y.detach(), batch_input_u.detach())
+                    """outputs = model.forward_sequence(
                         {"input_y": batch_input_y, "input_u": batch_input_u}
-                    )
+                    )"""
+                    output_dict = {
+                        "multiStep_decodeError": outputs[3],
+                        "oneStepDecoderError": outputs[1],
+                        "forwardError": outputs[4],
+                        "functional_1": outputs[0],
+                        "functional_2": outputs[1],
+                    }
                     batch_loss = self.calculate_weighted_loss(
-                        outputs, loss_weights, criterion
+                        output_dict, loss_weights, criterion
                     )
                     val_loss += batch_loss.item()
                     num_batches += 1
