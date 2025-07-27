@@ -497,35 +497,26 @@ class AdvAutoencoder(nn.Module):
                 scheduler.step(avg_val_loss)
 
                 # === EARLY STOPPING & CHECKPOINTING ===
+                if save_best_model and checkpoint_dir and avg_val_loss < best_val_loss:
+                    best_val_loss = avg_val_loss
+                    self._save_checkpoint(
+                        model,
+                        optimizer,
+                        scheduler,
+                        epoch,
+                        best_val_loss,
+                        checkpoint_dir / "best_model.pth",
+                    )
+
                 if avg_val_loss < best_val_loss - min_delta:
                     best_val_loss = avg_val_loss
                     patience_counter = 0
-
-                    if save_best_model and checkpoint_dir:
-                        self._save_checkpoint(
-                            model,
-                            optimizer,
-                            scheduler,
-                            epoch,
-                            best_val_loss,
-                            checkpoint_dir / "best_model.pth",
-                        )
                 else:
                     patience_counter += 1
 
                 if patience_counter >= early_stopping_patience:
                     logging.info(f"Early stopping triggered after {epoch + 1} epochs")
                     break
-
-                if save_best_model and checkpoint_dir and (epoch + 1) % 10 == 0:
-                    self._save_checkpoint(
-                        model,
-                        optimizer,
-                        scheduler,
-                        epoch,
-                        avg_val_loss,
-                        checkpoint_dir / f"checkpoint_epoch_{epoch + 1}.pth",
-                    )
 
         except Exception as e:
             logging.error(f"Training failed with error: {e}")
