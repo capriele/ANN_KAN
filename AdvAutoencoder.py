@@ -13,8 +13,15 @@ import logging
 from pathlib import Path
 from ANNmodel import *
 from BridgeNetwork import *
+from BridgeNetworkKAN import *
 from EncoderNetwork import *
 from DecoderNetwork import *
+
+import multiprocessing as mp
+import os
+import torch.multiprocessing as torch_mp
+from concurrent.futures import ThreadPoolExecutor
+import psutil
 
 torch.set_num_threads(8)
 torch.set_num_interop_threads(4)
@@ -63,6 +70,7 @@ class DatasetLoadUtility:
 
 
 class AdvAutoencoder(nn.Module):
+
     def __init__(
         self,
         nonlinearity="relu",
@@ -77,6 +85,7 @@ class AdvAutoencoder(nn.Module):
         outputWindowLen=2,
         affineStruct=True,
         regularizerWeight=0.0005,
+        batch_size=24,
     ):
         super(AdvAutoencoder, self).__init__()
 
@@ -96,7 +105,7 @@ class AdvAutoencoder(nn.Module):
         self.useGroupLasso = useGroupLasso
         self.shuffledIndexes = None
         self.constraintOnInputHiddenLayer = None
-        self.batch_size = 24
+        self.batch_size = batch_size
         if useGroupLasso and regularizerWeight > 0.0:
             # self.constraintOnInputHiddenLayer=unit_norm();
             if stateReduction:
@@ -200,6 +209,7 @@ class AdvAutoencoder(nn.Module):
             bridge_network=bridgeNetwork,
         )
         logging.info(f"\n{ann}")
+        self.model = ann
         return ann, convEncoder, outputEncoder, bridgeNetwork
 
     def get_activation(self, name):
@@ -218,16 +228,16 @@ class AdvAutoencoder(nn.Module):
         if Y is None:
             Y = self.Y
         pad = self.MaxRange - 2
-        strideLen = self.strideLen + pad
-        print(strideLen)
+        _strideLen = self.strideLen + pad
+        print(_strideLen)
         lenDS = U.shape[0]
-        inputVector = np.zeros((lenDS - 2, self.N_U * (strideLen + 2)))
-        outputVector = np.zeros((lenDS - 2, self.N_Y * (strideLen + 2)))
+        inputVector = np.zeros((lenDS - 2, self.N_U * (_strideLen + 2)))
+        outputVector = np.zeros((lenDS - 2, self.N_Y * (_strideLen + 2)))
         offset = self.strideLen + 1 + pad
 
         for i in range(offset, lenDS):
-            regressor_StateInputs = np.ravel(U[i - strideLen - 1 : i + 1])
-            regressor_StateOutputs = np.ravel(Y[i - strideLen - 1 : i + 1])
+            regressor_StateInputs = np.ravel(U[i - _strideLen - 1 : i + 1])
+            regressor_StateOutputs = np.ravel(Y[i - _strideLen - 1 : i + 1])
             inputVector[i - offset] = regressor_StateInputs.copy()
             outputVector[i - offset] = regressor_StateOutputs.copy()
 
@@ -238,13 +248,553 @@ class AdvAutoencoder(nn.Module):
 
     def trainModel(self, epochs=150, shuffled: bool = True):
         tmp = self.privateTrainModel(
-            shuffled, None, kFPE=0.0, kAEPrediction=10, kForward=0.3, epochs=epochs
-        )
-        tmp = self.privateTrainModel(
-            shuffled, tmp, 1, 0.0, 10, "checkpoints", None, epochs, 8, 0.001, True
+            [
+                {"kFPE": 0.0, "kAEPrediction": 10, "kForward": 0.3},
+                {"kFPE": 1.0, "kAEPrediction": 0, "kForward": 10},
+            ],
+            shuffled,
+            epochs=epochs,
         )
 
     def privateTrainModel(
+        self,
+        coefficients,
+        shuffled: bool = True,
+        checkpoint_path: Optional[str] = None,
+        loss_weights: Optional[Dict[str, float]] = None,
+        epochs: int = 150,
+        early_stopping_patience: int = 8,
+        min_delta: float = 0.00001,
+        save_best_model: bool = True,
+        num_workers: Optional[int] = None,
+        prefetch_factor: int = 4,
+        use_mixed_precision: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Train the model with CPU optimizations for high-performance hardware.
+
+        Args:
+            shuffled: Whether to shuffle training data
+            checkpoint_path: Path to load model checkpoint from
+            loss_weights: Dictionary of loss component weights
+            epochs: Maximum number of training epochs
+            early_stopping_patience: Epochs to wait before early stopping
+            min_delta: Minimum change to qualify as improvement
+            save_best_model: Whether to save the best model during training
+            num_workers: Number of worker processes for data loading (auto-detected if None)
+            prefetch_factor: Number of batches to prefetch per worker
+            use_mixed_precision: Use automatic mixed precision training
+
+        Returns:
+            Dictionary containing training results and model state
+        """
+
+        try:
+            # CPU optimization setup
+            self._setup_cpu_optimizations()
+
+            # Auto-detect optimal number of workers if not specified
+            if num_workers is None:
+                cpu_count = psutil.cpu_count(logical=False)  # Physical cores
+                logical_count = psutil.cpu_count(logical=True)  # Logical cores
+                # Use 75% of logical cores, but leave some for system processes
+                num_workers = max(1, min(logical_count - 2, int(logical_count * 0.75)))
+                logging.info(
+                    f"Auto-detected {num_workers} workers (Physical cores: {cpu_count}, Logical: {logical_count})"
+                )
+
+            # Prepare data with parallel processing
+            logging.info("Preparing dataset with parallel processing...")
+            inputVector, outputVector = self._prepare_dataset_parallel()
+
+            # Force CPU usage and optimize
+            device = torch.device("cpu")
+            logging.info(f"Using CPU with {num_workers} workers")
+
+            # Move data to device with optimized memory layout
+            inputVector = inputVector.to(device, non_blocking=False).contiguous()
+            outputVector = outputVector.to(device, non_blocking=False).contiguous()
+
+            # Model initialization with CPU optimizations
+            if checkpoint_path is not None and Path(checkpoint_path).exists():
+                logging.info(f"Loading model from checkpoint: {checkpoint_path}")
+                checkpoint = torch.load(
+                    f"{checkpoint_path}/best_model.pth",
+                    map_location=device,
+                    weights_only=True,  # Security improvement
+                )
+                self.model.load_state_dict(checkpoint["model_state_dict"])
+                convEncoder = self.model.conv_encoder
+                outputEncoder = self.model.output_decoder
+                bridgeNetwork = self.model.bridge_network
+                checkpoint_dir = Path(checkpoint_path)
+            else:
+                logging.info("Initializing new model with CPU optimizations...")
+                self.model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel()
+
+                # Update checkpoints path and create dir if not exists
+                if checkpoint_path is None:
+                    checkpoint_path = "checkpoints"
+                checkpoint_dir = Path(checkpoint_path)
+                checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+            # Move models to device and optimize for CPU
+            self.model = self.model.to(device)
+            convEncoder = convEncoder.to(device)
+            outputEncoder = outputEncoder.to(device)
+            bridgeNetwork = bridgeNetwork.to(device)
+
+            # Apply CPU-specific optimizations after data is available
+            # Get sample shapes from actual data for JIT optimization
+            sample_y_shape = inputVector[:1].shape
+            sample_u_shape = outputVector[:1].shape
+            self.model = self._optimize_model_for_cpu(
+                self.model, sample_y_shape, sample_u_shape
+            )
+
+            # Store models
+            # self.model = model
+            # self.convEncoder = convEncoder
+            # self.outputEncoder = outputEncoder
+            # self.bridgeNetwork = bridgeNetwork
+
+            # Count parameters
+            total_params = sum(p.numel() for p in self.model.parameters())
+            trainable_params = sum(
+                p.numel() for p in self.model.parameters() if p.requires_grad
+            )
+            logging.info(
+                f"Total parameters: {total_params:,}, Trainable: {trainable_params:,}"
+            )
+
+            # Optimizer setup with CPU-optimized settings
+            optimizer = optim.AdamW(
+                self.model.parameters(),
+                lr=0.002,
+                weight_decay=1e-4,
+                amsgrad=True,
+                fused=False,  # Fused optimizers may not be available on CPU
+            )
+
+            # Learning rate scheduler
+            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer,
+                mode="min",
+                factor=0.3,
+                patience=3,
+                threshold=min_delta,
+                threshold_mode="abs",
+                verbose=True,
+                min_lr=1e-6,
+            )
+
+            # Mixed precision setup for CPU (if supported)
+            scaler = None
+            if use_mixed_precision and hasattr(torch.cpu, "amp"):
+                scaler = torch.cpu.amp.GradScaler()
+                logging.info("Using CPU mixed precision training")
+
+            # Prepare data splits with parallel processing
+            data_size = outputVector.shape[0]
+            if self.shuffledIndexes is None:
+                # Use parallel random number generation
+                with ThreadPoolExecutor(max_workers=min(4, num_workers)) as executor:
+                    self.shuffledIndexes = np.random.permutation(data_size)
+
+            shuffledIndexes = self.shuffledIndexes
+            input_y = outputVector[shuffledIndexes]
+            input_u = inputVector[shuffledIndexes]
+
+            # Prepare targets
+            model_size = 6
+            target_zeros = torch.zeros(
+                data_size, model_size, device=device, dtype=input_y.dtype
+            )
+
+            # Split data
+            val_split_idx = int(data_size * (1 - self.validation_split))
+
+            # Training data
+            train_input_y = input_y[:val_split_idx].contiguous()
+            train_input_u = input_u[:val_split_idx].contiguous()
+            train_targets = target_zeros[:val_split_idx].contiguous()
+
+            # Validation data
+            val_input_y = input_y[val_split_idx:].contiguous()
+            val_input_u = input_u[val_split_idx:].contiguous()
+            val_targets = target_zeros[val_split_idx:].contiguous()
+
+            # Create optimized DataLoaders
+            train_dataset = TensorDataset(train_input_y, train_input_u, train_targets)
+            val_dataset = TensorDataset(val_input_y, val_input_u, val_targets)
+
+            # Optimize batch size for CPU
+            optimized_batch_size = self._optimize_batch_size_for_cpu(self.batch_size)
+
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=optimized_batch_size,
+                shuffle=False,
+                num_workers=num_workers,
+                pin_memory=False,  # Pin memory not needed for CPU
+                drop_last=True,
+                prefetch_factor=prefetch_factor,
+                persistent_workers=True,  # Keep workers alive between epochs
+                multiprocessing_context="spawn",  # Better for CPU-intensive tasks
+            )
+
+            val_loader = DataLoader(
+                val_dataset,
+                batch_size=optimized_batch_size,
+                shuffle=False,
+                num_workers=max(1, num_workers // 2),  # Fewer workers for validation
+                pin_memory=False,
+                prefetch_factor=prefetch_factor,
+                persistent_workers=True,
+                multiprocessing_context="spawn",
+            )
+
+            # Training setup
+            criterion = nn.MSELoss()
+            best_val_loss = float("inf")
+            patience_counter = 0
+            train_losses = []
+            val_losses = []
+
+            logging.info(
+                f"Starting training for {epochs} epochs with {num_workers} workers..."
+            )
+
+            # Default loss weights
+            for coef in coefficients:
+                kFPE = coef["kFPE"]
+                kAEPrediction = coef["kAEPrediction"]
+                kForward = coef["kForward"]
+                if loss_weights is None:
+                    loss_weights = {
+                        "multiStep_decodeError": kFPE,
+                        "oneStepDecoderError": kAEPrediction,
+                        "forwardError": kForward,
+                    }
+
+                logging.info(f"Loss weights: {loss_weights}")
+                logging.info(f"Optimized batch size: {optimized_batch_size}")
+
+                # Training loop with CPU optimizations
+                for epoch in range(epochs):
+                    start_time = time.time()
+
+                    # === TRAINING PHASE ===
+                    self.model.train()
+                    train_loss = 0.0
+                    num_batches = 0
+
+                    # Use parallel batch processing
+                    batch_losses = []
+
+                    for batch_idx, (
+                        batch_input_y,
+                        batch_input_u,
+                        batch_targets,
+                    ) in enumerate(train_loader):
+                        optimizer.zero_grad()
+
+                        # Ensure contiguous memory layout
+                        batch_input_y = batch_input_y.contiguous()
+                        batch_input_u = batch_input_u.contiguous()
+
+                        # Forward pass with optional mixed precision
+                        if scaler is not None:
+                            with torch.cpu.amp.autocast():
+                                outputs = self.model(batch_input_y, batch_input_u)
+                                output_dict = {
+                                    "multiStep_decodeError": outputs[3],
+                                    "oneStepDecoderError": outputs[2],
+                                    "forwardError": outputs[4],
+                                }
+                                batch_loss, loss_components = (
+                                    self.calculate_weighted_loss(
+                                        output_dict, loss_weights, criterion
+                                    )
+                                )
+
+                            # Backward pass with scaling
+                            scaler.scale(batch_loss).backward()
+                            scaler.step(optimizer)
+                            scaler.update()
+                        else:
+                            # Standard forward/backward pass
+                            outputs = self.model(batch_input_y, batch_input_u)
+                            output_dict = {
+                                "multiStep_decodeError": outputs[3],
+                                "oneStepDecoderError": outputs[2],
+                                "forwardError": outputs[4],
+                            }
+                            batch_loss, loss_components = self.calculate_weighted_loss(
+                                output_dict, loss_weights, criterion
+                            )
+
+                            # Backward pass
+                            batch_loss.backward()
+
+                            # Optional: gradient clipping
+                            # torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)
+
+                            # Update weights
+                            optimizer.step()
+
+                        # Accumulate loss
+                        train_loss += batch_loss.item()
+                        num_batches += 1
+
+                        # Periodic logging for long epochs
+                        if batch_idx % 100 == 0:
+                            print(f"Batch {batch_idx:3d}: {loss_components}")
+
+                    avg_train_loss = train_loss / max(num_batches, 1)
+                    train_losses.append(avg_train_loss)
+
+                    # === VALIDATION PHASE ===
+                    self.model.eval()
+                    with torch.no_grad():
+                        avg_val_loss = self._validate_model_parallel(
+                            self.model, val_loader, loss_weights, criterion, scaler
+                        )
+                        val_losses.append(avg_val_loss)
+
+                    # === LOGGING ===
+                    elapsed = time.time() - start_time
+                    logging.info(
+                        f"Epoch [{epoch + 1}/{epochs}] | "
+                        f"Train Loss: {avg_train_loss:.6f} | "
+                        f"Val Loss: {avg_val_loss:.6f} | "
+                        f"LR: {optimizer.param_groups[0]['lr']:.2e} | "
+                        f"Patience: {patience_counter} | "
+                        f"Time: {elapsed:.1f}s"
+                    )
+
+                    # === LEARNING RATE SCHEDULING ===
+                    scheduler.step(avg_val_loss)
+
+                    # === EARLY STOPPING & CHECKPOINTING ===
+                    logging.info(f"avg_val_loss {avg_val_loss} < {best_val_loss}?")
+                    if avg_val_loss < best_val_loss:
+                        best_val_loss = avg_val_loss
+                        patience_counter = 0
+
+                        if save_best_model and checkpoint_dir:
+                            # Use parallel checkpoint saving
+                            self._save_checkpoint_parallel(
+                                self.model,
+                                optimizer,
+                                scheduler,
+                                epoch,
+                                best_val_loss,
+                                checkpoint_dir / "best_model.pth",
+                            )
+
+                            # Store only best models
+                            # self.model = model
+                            # self.convEncoder = model.conv_encoder
+                            # self.outputEncoder = model.output_decoder
+                            # self.bridgeNetwork = model.bridge_network
+                    else:
+                        patience_counter += 1
+
+                    if patience_counter >= early_stopping_patience:
+                        logging.info(
+                            f"Early stopping triggered after {epoch + 1} epochs"
+                        )
+                        break
+
+        except Exception as e:
+            logging.error(f"Training failed with error: {e}")
+            raise
+
+        finally:
+            # Clean up resources
+            self._cleanup_resources()
+
+        # Prepare results
+        results = {
+            "model_state_dict": self.model.state_dict(),
+            "best_val_loss": best_val_loss,
+            "final_epoch": epoch + 1,
+            "train_losses": train_losses,
+            "val_losses": val_losses,
+            "total_parameters": total_params,
+            "trainable_parameters": trainable_params,
+            "num_workers_used": num_workers,
+            "optimized_batch_size": optimized_batch_size,
+        }
+
+        logging.info(f"Training completed. Best validation loss: {best_val_loss:.6f}")
+        return results
+
+    def _setup_cpu_optimizations(self):
+        """Setup CPU-specific optimizations."""
+        # Set optimal number of threads for PyTorch operations
+        cpu_count = psutil.cpu_count(logical=False)
+        torch.set_num_threads(cpu_count)
+
+        # Enable optimized CPU kernels
+        torch.backends.mkldnn.enabled = True
+        torch.backends.mkldnn.verbose = 0
+
+        # Set optimal OMP settings
+        os.environ["OMP_NUM_THREADS"] = str(cpu_count)
+        os.environ["MKL_NUM_THREADS"] = str(cpu_count)
+        os.environ["VECLIB_MAXIMUM_THREADS"] = str(cpu_count)
+        os.environ["NUMEXPR_NUM_THREADS"] = str(cpu_count)
+
+        # Enable Intel MKL optimizations if available
+        try:
+            import mkl
+
+            mkl.set_num_threads(cpu_count)
+            logging.info(f"Intel MKL enabled with {cpu_count} threads")
+        except ImportError:
+            pass
+
+        logging.info(f"CPU optimizations enabled: {cpu_count} threads")
+
+    def _optimize_model_for_cpu(self, model, sample_y_shape, sample_u_shape):
+        """Apply CPU-specific model optimizations."""
+        try:
+            # Option 1: Try PyTorch 2.0+ compilation first (most performant)
+            if hasattr(torch, "compile"):
+                try:
+                    compiled_model = torch.compile(
+                        model, mode="reduce-overhead", backend="inductor"
+                    )
+                    logging.info(
+                        "Model compiled with torch.compile for CPU optimization"
+                    )
+                    return compiled_model
+                except Exception as e:
+                    logging.warning(
+                        f"torch.compile failed: {e}, falling back to other optimizations"
+                    )
+
+            # Option 2: Try JIT scripting with inference optimization
+            try:
+                # Create sample inputs with correct shapes
+                sample_y = torch.randn(sample_y_shape, dtype=torch.float32)
+                sample_u = torch.randn(sample_u_shape, dtype=torch.float32)
+
+                # Trace the model
+                model.eval()
+                with torch.no_grad():
+                    traced_model = torch.jit.trace(model, (sample_y, sample_u))
+                    optimized_model = torch.jit.optimize_for_inference(traced_model)
+
+                model.train()  # Switch back to training mode
+                logging.info(
+                    "Model optimized with JIT tracing and optimize_for_inference"
+                )
+                return optimized_model
+
+            except Exception as e:
+                logging.warning(
+                    f"JIT optimization failed: {e}, using original model with basic optimizations"
+                )
+
+            # Option 3: Apply basic optimizations without JIT
+            # Enable MKLDNN for individual layers if possible
+            if hasattr(model, "to_mkldnn"):
+                try:
+                    model = model.to_mkldnn()
+                    logging.info("Model converted to MKLDNN format")
+                except:
+                    pass
+
+            return model
+
+        except Exception as e:
+            logging.warning(
+                f"All model optimizations failed: {e}, using original model"
+            )
+            return model
+
+    def _optimize_batch_size_for_cpu(self, base_batch_size):
+        """Optimize batch size based on CPU characteristics."""
+        cpu_count = psutil.cpu_count(logical=False)
+        memory_gb = psutil.virtual_memory().total / (1024**3)
+
+        # Scale batch size based on available resources
+        if memory_gb > 32 and cpu_count >= 8:
+            return min(base_batch_size * 2, 512)
+        elif memory_gb > 16 and cpu_count >= 4:
+            return min(int(base_batch_size * 1.5), 256)
+        else:
+            return base_batch_size
+
+    def _prepare_dataset_parallel(self):
+        """Prepare dataset using parallel processing."""
+        # If your prepareDataset method can be parallelized, implement it here
+        # For now, use the original method
+        return self.prepareDataset()
+
+    def _validate_model_parallel(
+        self, model, val_loader, loss_weights, criterion, scaler=None
+    ):
+        """Parallel validation with CPU optimizations."""
+        val_loss = 0.0
+        num_batches = 0
+
+        for batch_input_y, batch_input_u, batch_targets in val_loader:
+            # Ensure contiguous memory
+            batch_input_y = batch_input_y.contiguous()
+            batch_input_u = batch_input_u.contiguous()
+
+            if scaler is not None:
+                with torch.cpu.amp.autocast():
+                    outputs = model(batch_input_y, batch_input_u)
+            else:
+                outputs = model(batch_input_y, batch_input_u)
+
+            output_dict = {
+                "multiStep_decodeError": outputs[3],
+                "oneStepDecoderError": outputs[2],
+                "forwardError": outputs[4],
+            }
+
+            batch_loss, _ = self.calculate_weighted_loss(
+                output_dict, loss_weights, criterion
+            )
+            val_loss += batch_loss.item()
+            num_batches += 1
+
+        return val_loss / max(num_batches, 1)
+
+    def _save_checkpoint_parallel(self, model, optimizer, scheduler, epoch, loss, path):
+        """Save checkpoint using background thread."""
+
+        def save_fn():
+            checkpoint = {
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "scheduler_state_dict": scheduler.state_dict(),
+                "epoch": epoch,
+                "loss": loss,
+            }
+            torch.save(checkpoint, path)
+
+        # Use ThreadPoolExecutor for non-blocking save
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(save_fn)
+
+    def _cleanup_resources(self):
+        """Clean up resources after training."""
+        # Force garbage collection
+        import gc
+
+        gc.collect()
+
+        # Reset thread counts to system defaults if needed
+        # torch.set_num_threads(0)  # Uncomment if you want to reset
+
+    def privateTrainModel1(
         self,
         shuffled: bool = True,
         tmp=None,
@@ -255,7 +805,7 @@ class AdvAutoencoder(nn.Module):
         loss_weights: Optional[Dict[str, float]] = None,
         epochs: int = 150,
         early_stopping_patience: int = 8,
-        min_delta: float = 0.001,
+        min_delta: float = 0.00001,
         save_best_model: bool = True,
     ) -> Dict[str, Any]:
         """
@@ -323,6 +873,12 @@ class AdvAutoencoder(nn.Module):
             outputEncoder = outputEncoder.to(device)
             bridgeNetwork = bridgeNetwork.to(device)
 
+            # Store models (these variables are updated during training => store best model)
+            self.model = model
+            self.convEncoder = convEncoder
+            self.outputEncoder = outputEncoder
+            self.bridgeNetwork = bridgeNetwork
+
             # Count parameters
             total_params = sum(p.numel() for p in model.parameters())
             trainable_params = sum(
@@ -383,14 +939,14 @@ class AdvAutoencoder(nn.Module):
             val_dataset = TensorDataset(val_input_y, val_input_u, val_targets)
 
             # Use num_workers for faster data loading (adjust based on your system)
-            num_workers = min(4, torch.get_num_threads())
+            # num_workers = min(4, torch.get_num_threads())
 
             train_loader = DataLoader(
                 train_dataset,
                 batch_size=self.batch_size,
-                shuffle=shuffled,
-                num_workers=num_workers,
-                pin_memory=True if device.type == "cuda" else False,
+                shuffle=False,
+                # num_workers=num_workers,
+                # pin_memory=True if device.type == "cuda" else False,
                 drop_last=True,  # Helps with batch norm stability
             )
 
@@ -398,8 +954,8 @@ class AdvAutoencoder(nn.Module):
                 val_dataset,
                 batch_size=self.batch_size,
                 shuffle=False,
-                num_workers=num_workers,
-                pin_memory=True if device.type == "cuda" else False,
+                # num_workers=num_workers,
+                # pin_memory=True if device.type == "cuda" else False,
             )
 
             # Default loss weights
@@ -408,8 +964,8 @@ class AdvAutoencoder(nn.Module):
                     "multiStep_decodeError": kFPE,
                     "oneStepDecoderError": kAEPrediction,
                     "forwardError": kForward,
-                    "functional_1": 1.0,
-                    "functional_2": 1.0,
+                    # "functional_1": 1.0,
+                    # "functional_2": 1.0,
                 }
 
             logging.info(f"Loss weights: {loss_weights}")
@@ -440,17 +996,17 @@ class AdvAutoencoder(nn.Module):
                     optimizer.zero_grad()
 
                     # Forward pass
-                    outputs = model(batch_input_y.detach(), batch_input_u.detach())
+                    outputs = model(batch_input_y, batch_input_u)
 
                     # Compute loss
                     output_dict = {
                         "multiStep_decodeError": outputs[3],
-                        "oneStepDecoderError": outputs[1],
+                        "oneStepDecoderError": outputs[2],
                         "forwardError": outputs[4],
-                        "functional_1": outputs[0],
-                        "functional_2": outputs[1],
+                        # "functional_1": outputs[0],
+                        # "functional_2": outputs[1],
                     }
-                    batch_loss = self.calculate_weighted_loss(
+                    batch_loss, loss_components = self.calculate_weighted_loss(
                         output_dict, loss_weights, criterion
                     )
 
@@ -458,19 +1014,20 @@ class AdvAutoencoder(nn.Module):
                     batch_loss.backward()
 
                     # Optional: gradient clipping
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
+                    # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
 
                     # Update weights
                     optimizer.step()
 
                     # Apply model-specific constraints and regularization
-                    model.output_decoder.apply_regularization()
-                    model.output_decoder.apply_constraints()
-                    model.bridge_network.apply_constraints()
+                    # model.output_decoder.apply_regularization()
+                    # model.output_decoder.apply_constraints()
+                    # model.bridge_network.apply_constraints()
 
                     # Accumulate loss
                     train_loss += batch_loss.item()
                     num_batches += 1
+                    print(loss_components)
 
                 avg_train_loss = train_loss / max(num_batches, 1)
                 train_losses.append(avg_train_loss)
@@ -490,6 +1047,7 @@ class AdvAutoencoder(nn.Module):
                     f"Train Loss: {avg_train_loss:.6f} | "
                     f"Val Loss: {avg_val_loss:.6f} | "
                     f"LR: {optimizer.param_groups[0]['lr']:.2e} | "
+                    f"Patience: {patience_counter} | "
                     f"Time: {elapsed:.1f}s"
                 )
 
@@ -497,22 +1055,29 @@ class AdvAutoencoder(nn.Module):
                 scheduler.step(avg_val_loss)
 
                 # === EARLY STOPPING & CHECKPOINTING ===
-                if save_best_model and checkpoint_dir and avg_val_loss < best_val_loss:
-                    best_val_loss = avg_val_loss
-                    self._save_checkpoint(
-                        model,
-                        optimizer,
-                        scheduler,
-                        epoch,
-                        best_val_loss,
-                        checkpoint_dir / "best_model.pth",
-                    )
-
-                if avg_val_loss < best_val_loss - min_delta:
-                    best_val_loss = avg_val_loss
+                if avg_val_loss > best_val_loss:
                     patience_counter = 0
                 else:
-                    patience_counter += 1
+                    if (best_val_loss - avg_val_loss) > min_delta:
+                        patience_counter = 0
+                    else:
+                        patience_counter += 1
+                    best_val_loss = avg_val_loss
+                    if save_best_model and checkpoint_dir:
+                        self._save_checkpoint(
+                            model,
+                            optimizer,
+                            scheduler,
+                            epoch,
+                            best_val_loss,
+                            checkpoint_dir / "best_model.pth",
+                        )
+
+                        # Store only best models
+                        self.model = model
+                        self.convEncoder = convEncoder
+                        self.outputEncoder = outputEncoder
+                        self.bridgeNetwork = bridgeNetwork
 
                 if patience_counter >= early_stopping_patience:
                     logging.info(f"Early stopping triggered after {epoch + 1} epochs")
@@ -526,12 +1091,6 @@ class AdvAutoencoder(nn.Module):
             # Clean up GPU memory
             if device.type == "cuda":
                 torch.cuda.empty_cache()
-
-        # Store models
-        self.model = model
-        self.convEncoder = convEncoder
-        self.outputEncoder = outputEncoder
-        self.bridgeNetwork = bridgeNetwork
 
         # Prepare results
         results = {
@@ -564,7 +1123,7 @@ class AdvAutoencoder(nn.Module):
             total_loss = torch.stack(loss_components).sum()
         else:
             total_loss = torch.tensor(0.0, requires_grad=True)
-        return total_loss
+        return total_loss, loss_components
 
     def _validate_model(
         self,
@@ -581,18 +1140,18 @@ class AdvAutoencoder(nn.Module):
         with torch.no_grad():
             for batch_input_y, batch_input_u, batch_targets in val_loader:
                 try:
-                    outputs = model(batch_input_y.detach(), batch_input_u.detach())
+                    outputs = model(batch_input_y, batch_input_u)
                     """outputs = model.forward_sequence(
                         {"input_y": batch_input_y, "input_u": batch_input_u}
                     )"""
                     output_dict = {
                         "multiStep_decodeError": outputs[3],
-                        "oneStepDecoderError": outputs[1],
+                        "oneStepDecoderError": outputs[2],
                         "forwardError": outputs[4],
-                        "functional_1": outputs[0],
-                        "functional_2": outputs[1],
+                        # "functional_1": outputs[0],
+                        # "functional_2": outputs[1],
                     }
-                    batch_loss = self.calculate_weighted_loss(
+                    batch_loss, loss_components = self.calculate_weighted_loss(
                         output_dict, loss_weights, criterion
                     )
                     val_loss += batch_loss.item()
