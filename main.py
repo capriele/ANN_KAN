@@ -35,7 +35,7 @@ class SystemSelectorEnum:
         dynamic_model = DummyModel()
         # Placeholder for dataset loading utility
         ds_loading = DatasetLoadUtility()
-        u_vero, y_vero, uv, yv = ds_loading.load_dataset_from_mat_file(filename)
+        u_vero, y_vero, uv, yv = ds_loading.loadDatasetFromMATfile(filename)
         numel = u_vero.shape[0]
         numel_v = uv.shape[0]
         u_n = np.reshape(u_vero.T[0], (numel, 1))
@@ -103,6 +103,7 @@ class Options:
         self.n_layers = 3
         self.n_neurons = 30
         self.epochs = 150
+        self.batch_size = 24
 
 
 if __name__ == "__main__":
@@ -112,7 +113,6 @@ if __name__ == "__main__":
     # %% Parameter parsing
     print("Epochs", Option.epochs)
     print("Parameters", sys.argv)
-    sys.argv = ["rep_package/v2/main.py", "1", "5", "1", "1", "6", "10", "1", "0"]
     if len(sys.argv) > 2:
         Option.fitHorizon = int(sys.argv[2])
         print(int(sys.argv[2]))
@@ -195,6 +195,7 @@ if __name__ == "__main__":
         n_neurons=Option.n_neurons,
         regularizerWeight=Option.regularizerWeight,
         stateSize=Option.stateSize,
+        batch_size=Option.batch_size,
     )
     model.setDataset(U_n.copy(), Y_n.copy(), U_Vn.copy(), Y_Vn.copy())
 
@@ -262,14 +263,22 @@ if __name__ == "__main__":
             if isinstance(logC[i][1], torch.Tensor):
                 logC[i][1] = logC[i][1].detach().numpy()
 
-            asda = np.reshape(asda, (1 + Option.stateSize, 1))
-            x0 = np.dot(logAB[i][1], asda).T
-            x0 = x0.squeeze()
-            x0 = np.reshape(x0, (1, Option.stateSize))
+            # Fixed: Proper reshaping to match original dimensions
+            asda = np.reshape(asda, (Option.stateSize + 1, 1))
 
-            # TODO: reshape a 2 x 6 ((out size) x (state size))
+            # State update using logAB[i][1] (A matrix) and logAB[i][2] (bias)
+            x0 = np.dot(logAB[i][1], asda)
+            x0 = x0 + np.reshape(logAB[i][2], (Option.stateSize, 1))
+
+            # Update x0 for next iteration - convert back to proper shape
+            x0 = x0.squeeze()
+            if x0.ndim == 1:
+                x0 = np.reshape(x0, (1, Option.stateSize))
+
+            # Output computation using logC[i][1] (C matrix)
             y = np.dot(logC[i][0].squeeze(), x0.T)
             logY += [y[0][-1]]
+
             i = i + 1
         #    logY+=[y[0][1]]
         logY = np.array(logY)
@@ -374,9 +383,6 @@ if __name__ == "__main__":
         logY = np.array(logY)
         logYR = np.array(logYR)
         # logYR = logYR.reshape(logYR.shape[0], 1)
-        print(logY)
-        print("########")
-        print(logYR)
         a = np.linalg.norm(np.array(logY) - np.array(logYR))
         b = np.linalg.norm(np.mean(np.array(logY)) - np.array(logYR))
         fit = 1 - (a / b)
