@@ -42,19 +42,22 @@ class BridgeNetworkKAN(nn.Module):
         self.future = future
 
         # Define the KAN network architecture
-        # Input size is stateSize + N_U, hidden layers have n_neurons each
-        kan_width = [
-            stateSize + N_U,
-            n_neurons,
-        ]  # * (n_layer - 1) + [n_neurons] #TODO: manage this change
+        input_dim = stateSize + N_U
+
+        # Create width specification for KAN
+        # [input_dim, hidden_neurons, ..., hidden_neurons, output_neurons]
+        if n_layer == 1:
+            width = [input_dim, n_neurons]
+        else:
+            width = [input_dim] + [n_neurons] * (n_layer - 1) + [n_neurons]
 
         # Main KAN network for feature extraction
         self.kan_network = KAN(
-            width=kan_width,
+            width=width,
             grid=grid_size,
             k=spline_order,
             noise_scale=noise_scale,
-            seed=seed
+            seed=seed,
         )
 
         # Disable symbolic training

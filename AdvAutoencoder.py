@@ -178,7 +178,8 @@ class AdvAutoencoder(nn.Module):
         return dn
 
     def bridgeNetwork(self, future=0):
-        bn = BridgeNetwork(
+        # bn = BridgeNetwork(
+        bn = BridgeNetworkKAN(
             stateSize=self.stateSize,
             N_U=self.N_U,
             n_neurons=self.n_neurons,
@@ -1148,8 +1149,6 @@ class AdvAutoencoder(nn.Module):
                         "multiStep_decodeError": outputs[3],
                         "oneStepDecoderError": outputs[2],
                         "forwardError": outputs[4],
-                        # "functional_1": outputs[0],
-                        # "functional_2": outputs[1],
                     }
                     batch_loss, loss_components = self.calculate_weighted_loss(
                         output_dict, loss_weights, criterion
