@@ -104,6 +104,7 @@ class Options:
         self.n_neurons = 30
         self.epochs = 150
         self.batch_size = 12
+        self.early_stopping_patience = 8
         self.min_delta = 0.000001
         self.enableKAN = False
 
@@ -214,7 +215,11 @@ if __name__ == "__main__":
     model.setDataset(U_n.copy(), Y_n.copy(), U_Vn.copy(), Y_Vn.copy())
 
     inputU, inputY = model.prepareDataset()
-    model.trainModel(epochs=Option.epochs, min_delta=Option.min_delta)
+    model.trainModel(
+        epochs=Option.epochs,
+        early_stopping_patience=Option.early_stopping_patience,
+        min_delta=Option.min_delta,
+    )
     (
         predictedLeft,
         stateLeft,
