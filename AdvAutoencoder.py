@@ -503,7 +503,6 @@ class AdvAutoencoder(nn.Module):
             # Training setup
             criterion = nn.MSELoss()
             best_val_loss = float("inf")
-            patience_counter = 0
             train_losses = []
             val_losses = []
 
@@ -516,6 +515,7 @@ class AdvAutoencoder(nn.Module):
                 kFPE = coef["kFPE"]
                 kAEPrediction = coef["kAEPrediction"]
                 kForward = coef["kForward"]
+                patience_counter = 0
                 if loss_weights is None:
                     loss_weights = {
                         "multiStep_decodeError": kFPE,
