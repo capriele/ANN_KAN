@@ -552,7 +552,7 @@ if __name__ == "__main__":
 
     print(Option.__dict__)
     scipy.io.matlab.savemat(
-        "dump_{0}_{1}.mat".format(
+        "dumps/dump_{0}_{1}.mat".format(
             Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
         ),
         {
