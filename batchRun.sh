@@ -1,8 +1,10 @@
 #!/bin/bash
 
 if [ "$9" = "1" ]; then
-    filename="results/${1}_KAN.txt"
+    mkdir -p results_kan
+    filename="results_kan/${1}.txt"
 else
+    mkdir -p results
     filename="results/${1}.txt"
 fi
 
