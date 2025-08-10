@@ -283,7 +283,11 @@ class AdvAutoencoder(nn.Module):
         )
 
     def trainModel(
-        self, epochs=150, shuffled: bool = True, min_delta: float = 0.000001
+        self,
+        epochs=150,
+        shuffled: bool = True,
+        early_stopping_patience: int = 8,
+        min_delta: float = 0.000001,
     ):
         tmp = self.privateTrainModel(
             [
@@ -291,6 +295,7 @@ class AdvAutoencoder(nn.Module):
                 {"kFPE": 1.0, "kAEPrediction": 0, "kForward": 10},
             ],
             shuffled,
+            early_stopping_patience=early_stopping_patience,
             min_delta=min_delta,
             epochs=epochs,
         )
