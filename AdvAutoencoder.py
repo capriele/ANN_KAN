@@ -258,16 +258,6 @@ class AdvAutoencoder(nn.Module):
         self.model = ann
         return ann, convEncoder, outputEncoder, bridgeNetwork
 
-    def get_activation(self, name):
-        if name == "relu":
-            return nn.ReLU()
-        elif name == "sigmoid":
-            return nn.Sigmoid()
-        elif name == "tanh":
-            return nn.Tanh()
-        else:
-            return nn.ReLU()
-
     def prepareDataset(self, U=None, Y=None):
         if U is None:
             U = self.U
@@ -292,13 +282,16 @@ class AdvAutoencoder(nn.Module):
             torch.tensor(outputVector[: i - offset + 1].copy()),
         )
 
-    def trainModel(self, epochs=150, shuffled: bool = True):
+    def trainModel(
+        self, epochs=150, shuffled: bool = True, min_delta: float = 0.000001
+    ):
         tmp = self.privateTrainModel(
             [
                 {"kFPE": 0.0, "kAEPrediction": 10, "kForward": 0.3},
                 {"kFPE": 1.0, "kAEPrediction": 0, "kForward": 10},
             ],
             shuffled,
+            min_delta=min_delta,
             epochs=epochs,
         )
 
@@ -310,7 +303,7 @@ class AdvAutoencoder(nn.Module):
         loss_weights: Optional[Dict[str, float]] = None,
         epochs: int = 150,
         early_stopping_patience: int = 8,
-        min_delta: float = 0.00001,
+        min_delta: float = 0.000001,
         save_best_model: bool = True,
         num_workers: Optional[int] = None,
         prefetch_factor: int = 4,
