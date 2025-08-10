@@ -13,31 +13,14 @@ import logging
 from pathlib import Path
 from ANNmodel import *
 from BridgeNetwork import *
-from BridgeNetworkKAN import *
 from EncoderNetwork import *
 from DecoderNetwork import *
-
+import ANNmodelKAN as ann_kan
 import multiprocessing as mp
 import os
 import torch.multiprocessing as torch_mp
 from concurrent.futures import ThreadPoolExecutor
 import psutil
-
-torch.set_num_threads(8)
-torch.set_num_interop_threads(4)
-
-# log into a file and console
-logging.basicConfig(
-    filename="app.log",
-    level=logging.INFO,  # Set the logging level to INFO
-    encoding="utf-8",
-    # filemode="w",
-    format="%(asctime)s - %(levelname)s - %(message)s",  # Define the log message format
-    # handlers=[
-    # logging.FileHandler("app.log"),
-    # logging.StreamHandler()
-    # ],
-)
 
 
 class EarlyStopping:
@@ -86,6 +69,7 @@ class AdvAutoencoder(nn.Module):
         affineStruct=True,
         regularizerWeight=0.0005,
         batch_size=24,
+        enableKAN=False,
     ):
         super(AdvAutoencoder, self).__init__()
 
@@ -106,6 +90,7 @@ class AdvAutoencoder(nn.Module):
         self.shuffledIndexes = None
         self.constraintOnInputHiddenLayer = None
         self.batch_size = batch_size
+        self.enableKAN = enableKAN
         if useGroupLasso and regularizerWeight > 0.0:
             # self.constraintOnInputHiddenLayer=unit_norm();
             if stateReduction:
@@ -122,7 +107,6 @@ class AdvAutoencoder(nn.Module):
             print(
                 "=>if GroupLasso is used,  l2 regularizer is set to 0.0001 in all bridge, encoder, and decoder"
             )
-            # print("=>if GroupLasso is used,  l2 regularizer is set to the same weigth in all bridge, encoder, and decoder")
         else:
             self.inputLayerRegularizer = self.kernel_regularizer
 
@@ -142,74 +126,135 @@ class AdvAutoencoder(nn.Module):
             self.Y_val = Y_val.copy()
 
     def encoderNetwork(self, future=0):
-        en = EncoderNetwork(
-            stride_len=self.strideLen,
-            n_u=self.N_U,
-            n_y=self.N_Y,
-            n_neurons=self.n_neurons,
-            n_layer=self.n_layer,
-            state_size=self.stateSize,
-            nonlinearity=self.nonlinearity,
-            kernel_regularizer=self.kernel_regularizer,
-            constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
-            use_group_lasso=self.useGroupLasso,
-            state_reduction=self.stateReduction,
-            input_layer_regularizer=self.inputLayerRegularizer,
-            future=future,
-        )
+        if self.enableKAN:
+            en = ann_kan.EncoderNetwork(
+                stride_len=self.strideLen,
+                n_u=self.N_U,
+                n_y=self.N_Y,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                state_size=self.stateSize,
+                nonlinearity=self.nonlinearity,
+                kernel_regularizer=self.kernel_regularizer,
+                constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
+                use_group_lasso=self.useGroupLasso,
+                state_reduction=self.stateReduction,
+                input_layer_regularizer=self.inputLayerRegularizer,
+                future=future,
+            )
+        else:
+            en = EncoderNetwork(
+                stride_len=self.strideLen,
+                n_u=self.N_U,
+                n_y=self.N_Y,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                state_size=self.stateSize,
+                nonlinearity=self.nonlinearity,
+                kernel_regularizer=self.kernel_regularizer,
+                constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
+                use_group_lasso=self.useGroupLasso,
+                state_reduction=self.stateReduction,
+                input_layer_regularizer=self.inputLayerRegularizer,
+                future=future,
+            )
         return en
 
     def decoderNetwork(self, future=0):
-        dn = DecoderNetwork(
-            state_size=self.stateSize,
-            n_neurons=self.n_neurons,
-            n_layer=self.n_layer,
-            nonlinearity=self.nonlinearity,
-            output_window_len=self.outputWindowLen,
-            N_Y=self.N_Y,
-            affine_struct=self.affineStruct,
-            kernel_regularizer=self.kernel_regularizer,
-            use_group_lasso=self.useGroupLasso,
-            state_reduction=self.stateReduction,
-            input_layer_regularizer=self.inputLayerRegularizer,
-            constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
-            future=future,
-        )
+        if self.enableKAN:
+            dn = ann_kan.DecoderNetwork(
+                state_size=self.stateSize,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                output_window_len=self.outputWindowLen,
+                N_Y=self.N_Y,
+                affine_struct=self.affineStruct,
+                kernel_regularizer=self.kernel_regularizer,
+                use_group_lasso=self.useGroupLasso,
+                state_reduction=self.stateReduction,
+                input_layer_regularizer=self.inputLayerRegularizer,
+                constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
+                future=future,
+            )
+        else:
+            dn = DecoderNetwork(
+                state_size=self.stateSize,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                output_window_len=self.outputWindowLen,
+                N_Y=self.N_Y,
+                affine_struct=self.affineStruct,
+                kernel_regularizer=self.kernel_regularizer,
+                use_group_lasso=self.useGroupLasso,
+                state_reduction=self.stateReduction,
+                input_layer_regularizer=self.inputLayerRegularizer,
+                constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
+                future=future,
+            )
         return dn
 
     def bridgeNetwork(self, future=0):
-        # bn = BridgeNetwork(
-        bn = BridgeNetworkKAN(
-            stateSize=self.stateSize,
-            N_U=self.N_U,
-            n_neurons=self.n_neurons,
-            n_layer=self.n_layer,
-            nonlinearity=self.nonlinearity,
-            kernel_regularizer=self.kernel_regularizer,
-            constraintOnInputHiddenLayer=self.constraintOnInputHiddenLayer,
-            useGroupLasso=self.useGroupLasso,
-            stateReduction=self.stateReduction,
-            inputLayerRegularizer=self.inputLayerRegularizer,
-            affineStruct=self.affineStruct,
-            future=future,
-        )
+        if self.enableKAN:
+            bn = ann_kan.BridgeNetwork(
+                stateSize=self.stateSize,
+                N_U=self.N_U,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                kernel_regularizer=self.kernel_regularizer,
+                constraintOnInputHiddenLayer=self.constraintOnInputHiddenLayer,
+                useGroupLasso=self.useGroupLasso,
+                stateReduction=self.stateReduction,
+                inputLayerRegularizer=self.inputLayerRegularizer,
+                affineStruct=self.affineStruct,
+                future=future,
+            )
+        else:
+            bn = BridgeNetwork(
+                stateSize=self.stateSize,
+                N_U=self.N_U,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                kernel_regularizer=self.kernel_regularizer,
+                constraintOnInputHiddenLayer=self.constraintOnInputHiddenLayer,
+                useGroupLasso=self.useGroupLasso,
+                stateReduction=self.stateReduction,
+                inputLayerRegularizer=self.inputLayerRegularizer,
+                affineStruct=self.affineStruct,
+                future=future,
+            )
         return bn
 
     def ANNModel(self):
         bridgeNetwork = self.bridgeNetwork()
         convEncoder = self.encoderNetwork()
         outputEncoder = self.decoderNetwork()
-        ann = ANNModel(
-            stride_len=self.strideLen,
-            max_range=self.MaxRange,
-            n_y=self.N_Y,
-            n_u=self.N_U,
-            output_window_len=self.outputWindowLen,
-            encoder_network=convEncoder,
-            decoder_network=outputEncoder,
-            bridge_network=bridgeNetwork,
-        )
-        logging.info(f"\n{ann}")
+        if self.enableKAN:
+            ann = ann_kan.ANNModel(
+                stride_len=self.strideLen,
+                max_range=self.MaxRange,
+                n_y=self.N_Y,
+                n_u=self.N_U,
+                output_window_len=self.outputWindowLen,
+                encoder_network=convEncoder,
+                decoder_network=outputEncoder,
+                bridge_network=bridgeNetwork,
+            )
+        else:
+            ann = ANNModel(
+                stride_len=self.strideLen,
+                max_range=self.MaxRange,
+                n_y=self.N_Y,
+                n_u=self.N_U,
+                output_window_len=self.outputWindowLen,
+                encoder_network=convEncoder,
+                decoder_network=outputEncoder,
+                bridge_network=bridgeNetwork,
+            )
+        print(f"\n{ann}")
         self.model = ann
         return ann, convEncoder, outputEncoder, bridgeNetwork
 
@@ -300,17 +345,17 @@ class AdvAutoencoder(nn.Module):
                 logical_count = psutil.cpu_count(logical=True)  # Logical cores
                 # Use 75% of logical cores, but leave some for system processes
                 num_workers = max(1, min(logical_count - 2, int(logical_count * 0.75)))
-                logging.info(
+                print(
                     f"Auto-detected {num_workers} workers (Physical cores: {cpu_count}, Logical: {logical_count})"
                 )
 
             # Prepare data with parallel processing
-            logging.info("Preparing dataset with parallel processing...")
+            print("Preparing dataset with parallel processing...")
             inputVector, outputVector = self._prepare_dataset_parallel()
 
             # Force CPU usage and optimize
             device = torch.device("cpu")
-            logging.info(f"Using CPU with {num_workers} workers")
+            print(f"Using CPU with {num_workers} workers")
 
             # Move data to device with optimized memory layout
             inputVector = inputVector.to(device, non_blocking=False).contiguous()
@@ -318,7 +363,7 @@ class AdvAutoencoder(nn.Module):
 
             # Model initialization with CPU optimizations
             if checkpoint_path is not None and Path(checkpoint_path).exists():
-                logging.info(f"Loading model from checkpoint: {checkpoint_path}")
+                print(f"Loading model from checkpoint: {checkpoint_path}")
                 checkpoint = torch.load(
                     f"{checkpoint_path}/best_model.pth",
                     map_location=device,
@@ -330,7 +375,7 @@ class AdvAutoencoder(nn.Module):
                 bridgeNetwork = self.model.bridge_network
                 checkpoint_dir = Path(checkpoint_path)
             else:
-                logging.info("Initializing new model with CPU optimizations...")
+                print("Initializing new model with CPU optimizations...")
                 self.model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel()
 
                 # Update checkpoints path and create dir if not exists
@@ -364,7 +409,7 @@ class AdvAutoencoder(nn.Module):
             trainable_params = sum(
                 p.numel() for p in self.model.parameters() if p.requires_grad
             )
-            logging.info(
+            print(
                 f"Total parameters: {total_params:,}, Trainable: {trainable_params:,}"
             )
 
@@ -393,7 +438,7 @@ class AdvAutoencoder(nn.Module):
             scaler = None
             if use_mixed_precision and hasattr(torch.cpu, "amp"):
                 scaler = torch.cpu.amp.GradScaler()
-                logging.info("Using CPU mixed precision training")
+                print("Using CPU mixed precision training")
 
             # Prepare data splits with parallel processing
             data_size = outputVector.shape[0]
@@ -462,7 +507,7 @@ class AdvAutoencoder(nn.Module):
             train_losses = []
             val_losses = []
 
-            logging.info(
+            print(
                 f"Starting training for {epochs} epochs with {num_workers} workers..."
             )
 
@@ -478,8 +523,8 @@ class AdvAutoencoder(nn.Module):
                         "forwardError": kForward,
                     }
 
-                logging.info(f"Loss weights: {loss_weights}")
-                logging.info(f"Optimized batch size: {optimized_batch_size}")
+                print(f"Loss weights: {loss_weights}")
+                print(f"Optimized batch size: {optimized_batch_size}")
 
                 # Training loop with CPU optimizations
                 for epoch in range(epochs):
@@ -565,7 +610,7 @@ class AdvAutoencoder(nn.Module):
 
                     # === LOGGING ===
                     elapsed = time.time() - start_time
-                    logging.info(
+                    print(
                         f"Epoch [{epoch + 1}/{epochs}] | "
                         f"Train Loss: {avg_train_loss:.6f} | "
                         f"Val Loss: {avg_val_loss:.6f} | "
@@ -578,7 +623,7 @@ class AdvAutoencoder(nn.Module):
                     scheduler.step(avg_val_loss)
 
                     # === EARLY STOPPING & CHECKPOINTING ===
-                    logging.info(f"avg_val_loss {avg_val_loss} < {best_val_loss}?")
+                    print(f"avg_val_loss {avg_val_loss} < {best_val_loss}?")
                     if avg_val_loss < best_val_loss:
                         best_val_loss = avg_val_loss
                         patience_counter = 0
@@ -603,9 +648,7 @@ class AdvAutoencoder(nn.Module):
                         patience_counter += 1
 
                     if patience_counter >= early_stopping_patience:
-                        logging.info(
-                            f"Early stopping triggered after {epoch + 1} epochs"
-                        )
+                        print(f"Early stopping triggered after {epoch + 1} epochs")
                         break
 
         except Exception as e:
@@ -629,7 +672,7 @@ class AdvAutoencoder(nn.Module):
             "optimized_batch_size": optimized_batch_size,
         }
 
-        logging.info(f"Training completed. Best validation loss: {best_val_loss:.6f}")
+        print(f"Training completed. Best validation loss: {best_val_loss:.6f}")
         return results
 
     def _setup_cpu_optimizations(self):
@@ -653,11 +696,11 @@ class AdvAutoencoder(nn.Module):
             import mkl
 
             mkl.set_num_threads(cpu_count)
-            logging.info(f"Intel MKL enabled with {cpu_count} threads")
+            print(f"Intel MKL enabled with {cpu_count} threads")
         except ImportError:
             pass
 
-        logging.info(f"CPU optimizations enabled: {cpu_count} threads")
+        print(f"CPU optimizations enabled: {cpu_count} threads")
 
     def _optimize_model_for_cpu(self, model, sample_y_shape, sample_u_shape):
         """Apply CPU-specific model optimizations."""
@@ -668,9 +711,7 @@ class AdvAutoencoder(nn.Module):
                     compiled_model = torch.compile(
                         model, mode="reduce-overhead", backend="inductor"
                     )
-                    logging.info(
-                        "Model compiled with torch.compile for CPU optimization"
-                    )
+                    print("Model compiled with torch.compile for CPU optimization")
                     return compiled_model
                 except Exception as e:
                     logging.warning(
@@ -690,9 +731,7 @@ class AdvAutoencoder(nn.Module):
                     optimized_model = torch.jit.optimize_for_inference(traced_model)
 
                 model.train()  # Switch back to training mode
-                logging.info(
-                    "Model optimized with JIT tracing and optimize_for_inference"
-                )
+                print("Model optimized with JIT tracing and optimize_for_inference")
                 return optimized_model
 
             except Exception as e:
@@ -705,7 +744,7 @@ class AdvAutoencoder(nn.Module):
             if hasattr(model, "to_mkldnn"):
                 try:
                     model = model.to_mkldnn()
-                    logging.info("Model converted to MKLDNN format")
+                    print("Model converted to MKLDNN format")
                 except:
                     pass
 
@@ -828,19 +867,19 @@ class AdvAutoencoder(nn.Module):
 
         try:
             # Prepare data
-            logging.info("Preparing dataset...")
+            print("Preparing dataset...")
             inputVector, outputVector = self.prepareDataset()
 
             # Device setup with better detection
             if torch.cuda.is_available():
                 device = torch.device("cuda")
-                logging.info(f"Using GPU: {torch.cuda.get_device_name()}")
+                print(f"Using GPU: {torch.cuda.get_device_name()}")
             # elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             #    device = torch.device("mps")
-            #    logging.info("Using Apple Silicon GPU (MPS)")
+            #    print("Using Apple Silicon GPU (MPS)")
             else:
                 device = torch.device("cpu")
-                logging.info("Using CPU")
+                print("Using CPU")
 
             # Move data to device
             inputVector = inputVector.to(device, non_blocking=True)
@@ -848,7 +887,7 @@ class AdvAutoencoder(nn.Module):
 
             # Model initialization
             if checkpoint_path is not None and Path(checkpoint_path).exists():
-                logging.info(f"Loading model from checkpoint: {checkpoint_path}")
+                print(f"Loading model from checkpoint: {checkpoint_path}")
                 checkpoint = torch.load(
                     f"{checkpoint_path}/best_model.pth", map_location=device
                 )
@@ -859,7 +898,7 @@ class AdvAutoencoder(nn.Module):
                 bridgeNetwork = model.bridge_network
                 checkpoint_dir = Path(checkpoint_path)
             else:
-                logging.info("Initializing new model...")
+                print("Initializing new model...")
                 model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel()
 
                 # Update checkpoints path and create dir if not exists
@@ -885,7 +924,7 @@ class AdvAutoencoder(nn.Module):
             trainable_params = sum(
                 p.numel() for p in model.parameters() if p.requires_grad
             )
-            logging.info(
+            print(
                 f"Total parameters: {total_params:,}, Trainable: {trainable_params:,}"
             )
 
@@ -969,7 +1008,7 @@ class AdvAutoencoder(nn.Module):
                     # "functional_2": 1.0,
                 }
 
-            logging.info(f"Loss weights: {loss_weights}")
+            print(f"Loss weights: {loss_weights}")
 
             # Training setup
             criterion = nn.MSELoss()
@@ -978,7 +1017,7 @@ class AdvAutoencoder(nn.Module):
             train_losses = []
             val_losses = []
 
-            logging.info(f"Starting training for {epochs} epochs...")
+            print(f"Starting training for {epochs} epochs...")
 
             # Training loop
             for epoch in range(epochs):
@@ -1043,7 +1082,7 @@ class AdvAutoencoder(nn.Module):
 
                 # === LOGGING ===
                 elapsed = time.time() - start_time
-                logging.info(
+                print(
                     f"Epoch [{epoch + 1}/{epochs}] | "
                     f"Train Loss: {avg_train_loss:.6f} | "
                     f"Val Loss: {avg_val_loss:.6f} | "
@@ -1081,7 +1120,7 @@ class AdvAutoencoder(nn.Module):
                         self.bridgeNetwork = bridgeNetwork
 
                 if patience_counter >= early_stopping_patience:
-                    logging.info(f"Early stopping triggered after {epoch + 1} epochs")
+                    print(f"Early stopping triggered after {epoch + 1} epochs")
                     break
 
         except Exception as e:
@@ -1104,7 +1143,7 @@ class AdvAutoencoder(nn.Module):
             "trainable_parameters": trainable_params,
         }
 
-        logging.info(f"Training completed. Best validation loss: {best_val_loss:.6f}")
+        print(f"Training completed. Best validation loss: {best_val_loss:.6f}")
         return results
 
     @staticmethod
@@ -1183,7 +1222,7 @@ class AdvAutoencoder(nn.Module):
             "val_loss": val_loss,
         }
         torch.save(checkpoint, filepath)
-        logging.info(f"Checkpoint saved: {filepath}")
+        print(f"Checkpoint saved: {filepath}")
 
     def getModel(self):
         return self.model

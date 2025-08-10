@@ -57,15 +57,15 @@ class SystemSelectorEnum:
 
     @staticmethod
     def MAGNETO_dataset():
-        return SystemSelectorEnum().load_from_dataset("Magneto.mat")
+        return SystemSelectorEnum().load_from_dataset("datasets/Magneto.mat")
 
     @staticmethod
     def TANKS_dataset():
-        return SystemSelectorEnum().load_from_dataset("TwoTanksMatlab.mat")
+        return SystemSelectorEnum().load_from_dataset("datasets/TwoTanksMatlab.mat")
 
     @staticmethod
     def SILVERBOX_dataset():
-        return SystemSelectorEnum().load_from_dataset("Silverbox.mat")
+        return SystemSelectorEnum().load_from_dataset("datasets/Silverbox.mat")
 
     def TWOTANKS(self, non_linear_input_char=False):
         dynamic_model = TwoTanks(Option.nonLinearInputChar)
@@ -104,6 +104,7 @@ class Options:
         self.n_neurons = 30
         self.epochs = 150
         self.batch_size = 24
+        self.enableKAN = False
 
 
 if __name__ == "__main__":
@@ -179,10 +180,21 @@ if __name__ == "__main__":
             pass
         print(float(sys.argv[8]))
 
+    # Check KAN mode flag
+    if len(sys.argv) > 9:
+        if int(sys.argv[8]) == 1:
+            Option.enableKAN = True
+            Option.n_layers = 3
+            Option.n_neurons = 20
+        else:
+            Option.enableKAN = False
+
     warnings.filterwarnings("ignore")
 
     # %% DS generation and model learning
     simulatedSystem, U_n, Y_n, U_Vn, Y_Vn = Option.dynamicalSystemSelector()
+    if simulatedSystem is DummyModel:
+        simulatedSystem.stateSize = Option.stateSize
 
     model = AdvAutoencoder(
         affineStruct=Option.affineStruct,
@@ -196,6 +208,7 @@ if __name__ == "__main__":
         regularizerWeight=Option.regularizerWeight,
         stateSize=Option.stateSize,
         batch_size=Option.batch_size,
+        enableKAN=Option.enableKAN,
     )
     model.setDataset(U_n.copy(), Y_n.copy(), U_Vn.copy(), Y_Vn.copy())
 
