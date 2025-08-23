@@ -2,7 +2,7 @@
 #SBATCH --job-name=ann_kan_2
 #SBATCH --output=slurm-%j.out
 #SBATCH --error=slurm-%j.err
-#SBATCH --time=23:00:00
+#SBATCH --time=96:00:00
 
 # User specific aliases and functions
 export HOME="/home/petruccia"

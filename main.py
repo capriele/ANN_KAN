@@ -57,22 +57,27 @@ class SystemSelectorEnum:
 
     @staticmethod
     def MAGNETO_dataset():
+        print("MAGNETO_dataset")
         return SystemSelectorEnum().load_from_dataset("datasets/Magneto.mat")
 
     @staticmethod
     def TANKS_dataset():
+        print("TANKS_dataset")
         return SystemSelectorEnum().load_from_dataset("datasets/TwoTanksMatlab.mat")
 
     @staticmethod
     def SILVERBOX_dataset():
+        print("SILVERBOX_dataset")
         return SystemSelectorEnum().load_from_dataset("datasets/Silverbox.mat")
 
     def TWOTANKS(self, non_linear_input_char=False):
+        print("TWOTANKS")
         dynamic_model = TwoTanks(Option.nonLinearInputChar)
         u, y, u_val, y_val = dynamic_model.prepareDataset(20000, 1000)
         return dynamic_model, u, y, u_val, y_val
 
     def BILINEAR(self, non_linear_input_char=False):
+        print("BILINEAR")
         dynamic_model = LinearSystem(Option.nonLinearInputChar)
         u, y, u_val, y_val = dynamic_model.prepareDataset(10000, 1000)
         return dynamic_model, u, y, u_val, y_val
@@ -102,8 +107,8 @@ class Options:
         self.outputWindowLen = 2
         self.n_layers = 3
         self.n_neurons = 30
-        self.epochs = 150
-        self.batch_size = 12
+        self.epochs = 300
+        self.batch_size = 24
         self.early_stopping_patience = 8
         self.min_delta = 0.000001
         self.enableKAN = False
@@ -183,8 +188,8 @@ if __name__ == "__main__":
         print(float(sys.argv[8]))
 
     # Check KAN mode flag
-    if len(sys.argv) > 9:
-        if int(sys.argv[8]) == 1:
+    if len(sys.argv) >= 10:
+        if int(sys.argv[10]) == 1:
             Option.enableKAN = True
             Option.n_layers = 3
             Option.n_neurons = 20

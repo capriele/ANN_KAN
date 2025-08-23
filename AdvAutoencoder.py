@@ -264,6 +264,8 @@ class AdvAutoencoder(nn.Module):
         if Y is None:
             Y = self.Y
         pad = self.MaxRange - 2
+        if int(pad) < 0:
+            pad = 0
         _strideLen = self.strideLen + pad
         print(_strideLen)
         lenDS = U.shape[0]
