@@ -12,9 +12,6 @@ from typing import Optional, Dict, Any, Tuple
 import logging
 from pathlib import Path
 from ANNmodel import *
-from BridgeNetwork import *
-from EncoderNetwork import *
-from DecoderNetwork import *
 import ANNmodelKAN as ann_kan
 import multiprocessing as mp
 import os
@@ -135,12 +132,6 @@ class AdvAutoencoder(nn.Module):
                 n_layer=self.n_layer,
                 state_size=self.stateSize,
                 nonlinearity=self.nonlinearity,
-                kernel_regularizer=self.kernel_regularizer,
-                constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
-                use_group_lasso=self.useGroupLasso,
-                state_reduction=self.stateReduction,
-                input_layer_regularizer=self.inputLayerRegularizer,
-                future=future,
             )
         else:
             en = EncoderNetwork(
@@ -170,12 +161,6 @@ class AdvAutoencoder(nn.Module):
                 output_window_len=self.outputWindowLen,
                 N_Y=self.N_Y,
                 affine_struct=self.affineStruct,
-                kernel_regularizer=self.kernel_regularizer,
-                use_group_lasso=self.useGroupLasso,
-                state_reduction=self.stateReduction,
-                input_layer_regularizer=self.inputLayerRegularizer,
-                constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
-                future=future,
             )
         else:
             dn = DecoderNetwork(
@@ -186,45 +171,27 @@ class AdvAutoencoder(nn.Module):
                 output_window_len=self.outputWindowLen,
                 N_Y=self.N_Y,
                 affine_struct=self.affineStruct,
-                kernel_regularizer=self.kernel_regularizer,
-                use_group_lasso=self.useGroupLasso,
-                state_reduction=self.stateReduction,
-                input_layer_regularizer=self.inputLayerRegularizer,
-                constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
-                future=future,
             )
         return dn
 
     def bridgeNetwork(self, future=0):
         if self.enableKAN:
             bn = ann_kan.BridgeNetwork(
-                stateSize=self.stateSize,
+                state_size=self.stateSize,
                 N_U=self.N_U,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
-                kernel_regularizer=self.kernel_regularizer,
-                constraintOnInputHiddenLayer=self.constraintOnInputHiddenLayer,
-                useGroupLasso=self.useGroupLasso,
-                stateReduction=self.stateReduction,
-                inputLayerRegularizer=self.inputLayerRegularizer,
-                affineStruct=self.affineStruct,
-                future=future,
+                affine_struct=self.affineStruct,
             )
         else:
             bn = BridgeNetwork(
-                stateSize=self.stateSize,
+                state_size=self.stateSize,
                 N_U=self.N_U,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
-                kernel_regularizer=self.kernel_regularizer,
-                constraintOnInputHiddenLayer=self.constraintOnInputHiddenLayer,
-                useGroupLasso=self.useGroupLasso,
-                stateReduction=self.stateReduction,
-                inputLayerRegularizer=self.inputLayerRegularizer,
-                affineStruct=self.affineStruct,
-                future=future,
+                affine_struct=self.affineStruct,
             )
         return bn
 
@@ -414,12 +381,16 @@ class AdvAutoencoder(nn.Module):
             )
 
             # Optimizer setup with CPU-optimized settings
-            optimizer = optim.AdamW(
+            # optimizer = optim.AdamW(
+            #     self.model.parameters(),
+            #     lr=0.002,
+            #     weight_decay=1e-4,
+            #     amsgrad=True,
+            #     fused=False,  # Fused optimizers may not be available on CPU
+            # )
+            optimizer = optim.LBFGS(
                 self.model.parameters(),
                 lr=0.002,
-                weight_decay=1e-4,
-                amsgrad=True,
-                fused=False,  # Fused optimizers may not be available on CPU
             )
 
             # Learning rate scheduler
@@ -543,15 +514,78 @@ class AdvAutoencoder(nn.Module):
                         batch_input_u,
                         batch_targets,
                     ) in enumerate(train_loader):
-                        optimizer.zero_grad()
+                        if isinstance(optimizer, torch.optim.LBFGS):
+                            # LBFGS requires closure
+                            def closure():
+                                optimizer.zero_grad()
 
-                        # Ensure contiguous memory layout
-                        batch_input_y = batch_input_y.contiguous()
-                        batch_input_u = batch_input_u.contiguous()
+                                if scaler is not None:
+                                    with torch.cuda.amp.autocast():
+                                        outputs = self.model(
+                                            batch_input_y, batch_input_u
+                                        )
+                                        output_dict = {
+                                            "multiStep_decodeError": outputs[3],
+                                            "oneStepDecoderError": outputs[2],
+                                            "forwardError": outputs[4],
+                                        }
+                                        batch_loss, loss_components = (
+                                            self.calculate_weighted_loss(
+                                                output_dict, loss_weights, criterion
+                                            )
+                                        )
 
-                        # Forward pass with optional mixed precision
-                        if scaler is not None:
-                            with torch.cpu.amp.autocast():
+                                    # Backward pass with scaling
+                                    scaler.scale(batch_loss).backward()
+                                else:
+                                    outputs = self.model(batch_input_y, batch_input_u)
+                                    output_dict = {
+                                        "multiStep_decodeError": outputs[3],
+                                        "oneStepDecoderError": outputs[2],
+                                        "forwardError": outputs[4],
+                                    }
+                                    batch_loss, loss_components = (
+                                        self.calculate_weighted_loss(
+                                            output_dict, loss_weights, criterion
+                                        )
+                                    )
+
+                                    batch_loss.backward()
+
+                                return batch_loss
+
+                            # LBFGS requires closure passed explicitly
+                            optimizer.step(closure)
+
+                        else:
+                            # Normal optimizers (Adam, SGD, etc.)
+                            optimizer.zero_grad()
+
+                            # Ensure contiguous memory layout
+                            batch_input_y = batch_input_y.contiguous()
+                            batch_input_u = batch_input_u.contiguous()
+
+                            # Forward pass with optional mixed precision
+                            if scaler is not None:
+                                with torch.cpu.amp.autocast():
+                                    outputs = self.model(batch_input_y, batch_input_u)
+                                    output_dict = {
+                                        "multiStep_decodeError": outputs[3],
+                                        "oneStepDecoderError": outputs[2],
+                                        "forwardError": outputs[4],
+                                    }
+                                    batch_loss, loss_components = (
+                                        self.calculate_weighted_loss(
+                                            output_dict, loss_weights, criterion
+                                        )
+                                    )
+
+                                # Backward pass with scaling
+                                scaler.scale(batch_loss).backward()
+                                scaler.step(optimizer)
+                                scaler.update()
+                            else:
+                                # Standard forward/backward pass
                                 outputs = self.model(batch_input_y, batch_input_u)
                                 output_dict = {
                                     "multiStep_decodeError": outputs[3],
@@ -564,30 +598,14 @@ class AdvAutoencoder(nn.Module):
                                     )
                                 )
 
-                            # Backward pass with scaling
-                            scaler.scale(batch_loss).backward()
-                            scaler.step(optimizer)
-                            scaler.update()
-                        else:
-                            # Standard forward/backward pass
-                            outputs = self.model(batch_input_y, batch_input_u)
-                            output_dict = {
-                                "multiStep_decodeError": outputs[3],
-                                "oneStepDecoderError": outputs[2],
-                                "forwardError": outputs[4],
-                            }
-                            batch_loss, loss_components = self.calculate_weighted_loss(
-                                output_dict, loss_weights, criterion
-                            )
+                                # Backward pass
+                                batch_loss.backward()
 
-                            # Backward pass
-                            batch_loss.backward()
+                                # Optional: gradient clipping
+                                # torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)
 
-                            # Optional: gradient clipping
-                            # torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)
-
-                            # Update weights
-                            optimizer.step()
+                                # Update weights
+                                optimizer.step()
 
                         # Accumulate loss
                         train_loss += batch_loss.item()
