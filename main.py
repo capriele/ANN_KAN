@@ -188,7 +188,7 @@ if __name__ == "__main__":
         print(float(sys.argv[8]))
 
     # Check KAN mode flag
-    if len(sys.argv) >= 10:
+    if len(sys.argv) > 10:
         if int(sys.argv[10]) == 1:
             Option.enableKAN = True
             Option.n_layers = 3
@@ -520,6 +520,7 @@ if __name__ == "__main__":
             (rP,) = plt.plot(logY)
             plt.tight_layout()
             plt.legend([uP, yP, rP], ["$u_k$", "$y_k$", "$r_k$"])
+            plt.savefig("closed_loop_simulation.png")  # <-- Save to PNG file
         print("elapsed time in MPC:", end - start)
     # print(fit)
     # %% Feature Importance
@@ -527,7 +528,7 @@ if __name__ == "__main__":
         if Option.affineStruct:
             print("******WARNING: affine struct is enabled******")
         print("evaluating state importance=>" + str(Option.stateReduction))
-        evaluateFeatureImportance()
+        # evaluateFeatureImportance()
 
     # %% These functions are used to generate plots for the paper
     def prettyPrintStatsUseNA(aOutput, aInput):
