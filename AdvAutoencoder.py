@@ -196,9 +196,10 @@ class AdvAutoencoder(nn.Module):
         return bn
 
     def ANNModel(self):
-        bridgeNetwork = self.bridgeNetwork()
-        convEncoder = self.encoderNetwork()
-        outputEncoder = self.decoderNetwork()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        bridgeNetwork = self.bridgeNetwork().to(device)
+        convEncoder = self.encoderNetwork().to(device)
+        outputEncoder = self.decoderNetwork().to(device)
         if self.enableKAN:
             ann = ann_kan.ANNModel(
                 stride_len=self.strideLen,
@@ -222,7 +223,7 @@ class AdvAutoencoder(nn.Module):
                 bridge_network=bridgeNetwork,
             )
         print(f"\n{ann}")
-        self.model = ann
+        self.model = ann.to(device)
         return ann, convEncoder, outputEncoder, bridgeNetwork
 
     def prepareDataset(self, U=None, Y=None):
@@ -284,8 +285,7 @@ class AdvAutoencoder(nn.Module):
         use_mixed_precision: bool = False,
     ) -> Dict[str, Any]:
         """
-        Train the model with CPU optimizations for high-performance hardware.
-
+        Train the model with GPU/CPU support and optimizations.
         Args:
             shuffled: Whether to shuffle training data
             checkpoint_path: Path to load model checkpoint from
@@ -296,21 +296,19 @@ class AdvAutoencoder(nn.Module):
             save_best_model: Whether to save the best model during training
             num_workers: Number of worker processes for data loading (auto-detected if None)
             prefetch_factor: Number of batches to prefetch per worker
-            use_mixed_precision: Use automatic mixed precision training
-
+            use_mixed_precision: Use automatic mixed precision training (GPU only)
         Returns:
             Dictionary containing training results and model state
         """
-
         try:
-            # CPU optimization setup
-            self._setup_cpu_optimizations()
+            # Device detection and selection
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            print(f"Using device: {device}")
 
             # Auto-detect optimal number of workers if not specified
             if num_workers is None:
                 cpu_count = psutil.cpu_count(logical=False)  # Physical cores
                 logical_count = psutil.cpu_count(logical=True)  # Logical cores
-                # Use 75% of logical cores, but leave some for system processes
                 num_workers = max(1, min(logical_count - 2, int(logical_count * 0.75)))
                 print(
                     f"Auto-detected {num_workers} workers (Physical cores: {cpu_count}, Logical: {logical_count})"
@@ -320,21 +318,17 @@ class AdvAutoencoder(nn.Module):
             print("Preparing dataset with parallel processing...")
             inputVector, outputVector = self._prepare_dataset_parallel()
 
-            # Force CPU usage and optimize
-            device = torch.device("cpu")
-            print(f"Using CPU with {num_workers} workers")
+            # Move data to device
+            inputVector = inputVector.to(device, non_blocking=True).contiguous()
+            outputVector = outputVector.to(device, non_blocking=True).contiguous()
 
-            # Move data to device with optimized memory layout
-            inputVector = inputVector.to(device, non_blocking=False).contiguous()
-            outputVector = outputVector.to(device, non_blocking=False).contiguous()
-
-            # Model initialization with CPU optimizations
+            # Model initialization
             if checkpoint_path is not None and Path(checkpoint_path).exists():
                 print(f"Loading model from checkpoint: {checkpoint_path}")
                 checkpoint = torch.load(
                     f"{checkpoint_path}/best_model.pth",
                     map_location=device,
-                    weights_only=True,  # Security improvement
+                    weights_only=True,
                 )
                 self.model.load_state_dict(checkpoint["model_state_dict"])
                 convEncoder = self.model.conv_encoder
@@ -342,34 +336,25 @@ class AdvAutoencoder(nn.Module):
                 bridgeNetwork = self.model.bridge_network
                 checkpoint_dir = Path(checkpoint_path)
             else:
-                print("Initializing new model with CPU optimizations...")
+                print("Initializing new model...")
                 self.model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel()
-
-                # Update checkpoints path and create dir if not exists
                 if checkpoint_path is None:
                     checkpoint_path = "checkpoints"
                 checkpoint_dir = Path(checkpoint_path)
                 checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-            # Move models to device and optimize for CPU
+            # Move models to device
             self.model = self.model.to(device)
             convEncoder = convEncoder.to(device)
             outputEncoder = outputEncoder.to(device)
             bridgeNetwork = bridgeNetwork.to(device)
 
-            # Apply CPU-specific optimizations after data is available
-            # Get sample shapes from actual data for JIT optimization
-            sample_y_shape = inputVector[:1].shape
-            sample_u_shape = outputVector[:1].shape
-            self.model = self._optimize_model_for_cpu(
-                self.model, sample_y_shape, sample_u_shape
+            # Mixed precision setup for GPU
+            scaler = torch.cuda.amp.GradScaler(
+                enabled=use_mixed_precision and device.type == "cuda"
             )
-
-            # Store models
-            # self.model = model
-            # self.convEncoder = convEncoder
-            # self.outputEncoder = outputEncoder
-            # self.bridgeNetwork = bridgeNetwork
+            if use_mixed_precision and device.type == "cuda":
+                print("Using GPU mixed precision training")
 
             # Count parameters
             total_params = sum(p.numel() for p in self.model.parameters())
@@ -380,17 +365,67 @@ class AdvAutoencoder(nn.Module):
                 f"Total parameters: {total_params:,}, Trainable: {trainable_params:,}"
             )
 
-            # Optimizer setup with CPU-optimized settings
-            # optimizer = optim.AdamW(
-            #     self.model.parameters(),
-            #     lr=0.002,
-            #     weight_decay=1e-4,
-            #     amsgrad=True,
-            #     fused=False,  # Fused optimizers may not be available on CPU
-            # )
+            # Data splits and DataLoaders
+            data_size = outputVector.shape[0]
+            if self.shuffledIndexes is None:
+                self.shuffledIndexes = np.random.permutation(data_size)
+            shuffledIndexes = self.shuffledIndexes
+            input_y = outputVector[shuffledIndexes]
+            input_u = inputVector[shuffledIndexes]
+            model_size = 6
+            target_zeros = torch.zeros(
+                data_size, model_size, device=device, dtype=input_y.dtype
+            )
+            val_split_idx = int(data_size * (1 - self.validation_split))
+
+            # Training and validation datasets
+            train_input_y = input_y[:val_split_idx].contiguous()
+            train_input_u = input_u[:val_split_idx].contiguous()
+            train_targets = target_zeros[:val_split_idx].contiguous()
+            val_input_y = input_y[val_split_idx:].contiguous()
+            val_input_u = input_u[val_split_idx:].contiguous()
+            val_targets = target_zeros[val_split_idx:].contiguous()
+
+            # Optimized DataLoaders
+            train_dataset = TensorDataset(train_input_y, train_input_u, train_targets)
+            val_dataset = TensorDataset(val_input_y, val_input_u, val_targets)
+            optimized_batch_size = (
+                self.batch_size
+                if device.type == "cuda"
+                else self._optimize_batch_size_for_cpu(self.batch_size)
+            )
+
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=optimized_batch_size,
+                shuffle=False,
+                num_workers=num_workers,
+                # pin_memory=device.type == "cuda",  # Pin memory for GPU
+                drop_last=True,
+                prefetch_factor=prefetch_factor,
+                persistent_workers=True,
+                multiprocessing_context="spawn",
+            )
+            val_loader = DataLoader(
+                val_dataset,
+                batch_size=optimized_batch_size,
+                shuffle=False,
+                num_workers=max(1, num_workers // 2),
+                # pin_memory=device.type == "cuda",
+                prefetch_factor=prefetch_factor,
+                persistent_workers=True,
+                multiprocessing_context="spawn",
+            )
+
+            # LBFGS optimizer setup
             optimizer = optim.LBFGS(
                 self.model.parameters(),
-                lr=0.002,
+                lr=0.1,
+                max_eval=None,
+                tolerance_grad=1e-7,
+                tolerance_change=1e-9,
+                history_size=100,
+                line_search_fn="strong_wolfe",
             )
 
             # Learning rate scheduler
@@ -405,73 +440,7 @@ class AdvAutoencoder(nn.Module):
                 min_lr=1e-6,
             )
 
-            # Mixed precision setup for CPU (if supported)
-            scaler = None
-            if use_mixed_precision and hasattr(torch.cpu, "amp"):
-                scaler = torch.cpu.amp.GradScaler()
-                print("Using CPU mixed precision training")
-
-            # Prepare data splits with parallel processing
-            data_size = outputVector.shape[0]
-            if self.shuffledIndexes is None:
-                # Use parallel random number generation
-                with ThreadPoolExecutor(max_workers=min(4, num_workers)) as executor:
-                    self.shuffledIndexes = np.random.permutation(data_size)
-
-            shuffledIndexes = self.shuffledIndexes
-            input_y = outputVector[shuffledIndexes]
-            input_u = inputVector[shuffledIndexes]
-
-            # Prepare targets
-            model_size = 6
-            target_zeros = torch.zeros(
-                data_size, model_size, device=device, dtype=input_y.dtype
-            )
-
-            # Split data
-            val_split_idx = int(data_size * (1 - self.validation_split))
-
-            # Training data
-            train_input_y = input_y[:val_split_idx].contiguous()
-            train_input_u = input_u[:val_split_idx].contiguous()
-            train_targets = target_zeros[:val_split_idx].contiguous()
-
-            # Validation data
-            val_input_y = input_y[val_split_idx:].contiguous()
-            val_input_u = input_u[val_split_idx:].contiguous()
-            val_targets = target_zeros[val_split_idx:].contiguous()
-
-            # Create optimized DataLoaders
-            train_dataset = TensorDataset(train_input_y, train_input_u, train_targets)
-            val_dataset = TensorDataset(val_input_y, val_input_u, val_targets)
-
-            # Optimize batch size for CPU
-            optimized_batch_size = self._optimize_batch_size_for_cpu(self.batch_size)
-
-            train_loader = DataLoader(
-                train_dataset,
-                batch_size=optimized_batch_size,
-                shuffle=False,
-                num_workers=num_workers,
-                pin_memory=False,  # Pin memory not needed for CPU
-                drop_last=True,
-                prefetch_factor=prefetch_factor,
-                persistent_workers=True,  # Keep workers alive between epochs
-                multiprocessing_context="spawn",  # Better for CPU-intensive tasks
-            )
-
-            val_loader = DataLoader(
-                val_dataset,
-                batch_size=optimized_batch_size,
-                shuffle=False,
-                num_workers=max(1, num_workers // 2),  # Fewer workers for validation
-                pin_memory=False,
-                prefetch_factor=prefetch_factor,
-                persistent_workers=True,
-                multiprocessing_context="spawn",
-            )
-
-            # Training setup
+            # Loss and training setup
             criterion = nn.MSELoss()
             best_val_loss = float("inf")
             train_losses = []
@@ -481,7 +450,6 @@ class AdvAutoencoder(nn.Module):
                 f"Starting training for {epochs} epochs with {num_workers} workers..."
             )
 
-            # Default loss weights
             for coef in coefficients:
                 kFPE = coef["kFPE"]
                 kAEPrediction = coef["kAEPrediction"]
@@ -493,140 +461,66 @@ class AdvAutoencoder(nn.Module):
                         "oneStepDecoderError": kAEPrediction,
                         "forwardError": kForward,
                     }
-
                 print(f"Loss weights: {loss_weights}")
                 print(f"Optimized batch size: {optimized_batch_size}")
 
-                # Training loop with CPU optimizations
+                # Training loop
                 for epoch in range(epochs):
                     start_time = time.time()
-
-                    # === TRAINING PHASE ===
                     self.model.train()
-                    train_loss = 0.0
-                    num_batches = 0
 
-                    # Use parallel batch processing
-                    batch_losses = []
+                    # LBFGS requires the entire dataset as a single batch
 
-                    for batch_idx, (
-                        batch_input_y,
-                        batch_input_u,
-                        batch_targets,
-                    ) in enumerate(train_loader):
-                        if isinstance(optimizer, torch.optim.LBFGS):
-                            # LBFGS requires closure
-                            def closure():
-                                optimizer.zero_grad()
-
-                                if scaler is not None:
-                                    with torch.cuda.amp.autocast():
-                                        outputs = self.model(
-                                            batch_input_y, batch_input_u
-                                        )
-                                        output_dict = {
-                                            "multiStep_decodeError": outputs[3],
-                                            "oneStepDecoderError": outputs[2],
-                                            "forwardError": outputs[4],
-                                        }
-                                        batch_loss, loss_components = (
-                                            self.calculate_weighted_loss(
-                                                output_dict, loss_weights, criterion
-                                            )
-                                        )
-
-                                    # Backward pass with scaling
-                                    scaler.scale(batch_loss).backward()
-                                else:
-                                    outputs = self.model(batch_input_y, batch_input_u)
-                                    output_dict = {
-                                        "multiStep_decodeError": outputs[3],
-                                        "oneStepDecoderError": outputs[2],
-                                        "forwardError": outputs[4],
-                                    }
-                                    batch_loss, loss_components = (
-                                        self.calculate_weighted_loss(
-                                            output_dict, loss_weights, criterion
-                                        )
-                                    )
-
-                                    batch_loss.backward()
-
-                                return batch_loss
-
-                            # LBFGS requires closure passed explicitly
-                            optimizer.step(closure)
-
+                    def closure():
+                        optimizer.zero_grad()
+                        with torch.cuda.amp.autocast(
+                            enabled=use_mixed_precision and device.type == "cuda"
+                        ):
+                            outputs = self.model(train_input_y, train_input_u)
+                            output_dict = {
+                                "multiStep_decodeError": outputs[3],
+                                "oneStepDecoderError": outputs[2],
+                                "forwardError": outputs[4],
+                            }
+                            batch_loss, loss_components = self.calculate_weighted_loss(
+                                output_dict, loss_weights, criterion
+                            )
+                        if use_mixed_precision and device.type == "cuda":
+                            scaler.scale(batch_loss).backward()
                         else:
-                            # Normal optimizers (Adam, SGD, etc.)
-                            optimizer.zero_grad()
+                            batch_loss.backward()
+                        # print(f"LBFGS full-batch loss: {loss_components}")
+                        return batch_loss
 
-                            # Ensure contiguous memory layout
-                            batch_input_y = batch_input_y.contiguous()
-                            batch_input_u = batch_input_u.contiguous()
+                    optimizer.step(closure)
 
-                            # Forward pass with optional mixed precision
-                            if scaler is not None:
-                                with torch.cpu.amp.autocast():
-                                    outputs = self.model(batch_input_y, batch_input_u)
-                                    output_dict = {
-                                        "multiStep_decodeError": outputs[3],
-                                        "oneStepDecoderError": outputs[2],
-                                        "forwardError": outputs[4],
-                                    }
-                                    batch_loss, loss_components = (
-                                        self.calculate_weighted_loss(
-                                            output_dict, loss_weights, criterion
-                                        )
-                                    )
+                    # Manually compute loss for logging
+                    with torch.no_grad():
+                        outputs = self.model(train_input_y, train_input_u)
+                        output_dict = {
+                            "multiStep_decodeError": outputs[3],
+                            "oneStepDecoderError": outputs[2],
+                            "forwardError": outputs[4],
+                        }
+                        avg_train_loss, _ = self.calculate_weighted_loss(
+                            output_dict, loss_weights, criterion
+                        )
+                    train_losses.append(avg_train_loss.item())
 
-                                # Backward pass with scaling
-                                scaler.scale(batch_loss).backward()
-                                scaler.step(optimizer)
-                                scaler.update()
-                            else:
-                                # Standard forward/backward pass
-                                outputs = self.model(batch_input_y, batch_input_u)
-                                output_dict = {
-                                    "multiStep_decodeError": outputs[3],
-                                    "oneStepDecoderError": outputs[2],
-                                    "forwardError": outputs[4],
-                                }
-                                batch_loss, loss_components = (
-                                    self.calculate_weighted_loss(
-                                        output_dict, loss_weights, criterion
-                                    )
-                                )
-
-                                # Backward pass
-                                batch_loss.backward()
-
-                                # Optional: gradient clipping
-                                # torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)
-
-                                # Update weights
-                                optimizer.step()
-
-                        # Accumulate loss
-                        train_loss += batch_loss.item()
-                        num_batches += 1
-
-                        # Periodic logging for long epochs
-                        if batch_idx % 100 == 0:
-                            print(f"Batch {batch_idx:3d}: {loss_components}")
-
-                    avg_train_loss = train_loss / max(num_batches, 1)
-                    train_losses.append(avg_train_loss)
-
-                    # === VALIDATION PHASE ===
+                    # Validation phase
                     self.model.eval()
                     with torch.no_grad():
                         avg_val_loss = self._validate_model_parallel(
-                            self.model, val_loader, loss_weights, criterion, scaler
+                            self.model,
+                            val_loader,
+                            loss_weights,
+                            criterion,
+                            scaler,
+                            device,
                         )
                         val_losses.append(avg_val_loss)
 
-                    # === LOGGING ===
+                    # Logging and checkpointing
                     elapsed = time.time() - start_time
                     print(
                         f"Epoch [{epoch + 1}/{epochs}] | "
@@ -637,17 +531,12 @@ class AdvAutoencoder(nn.Module):
                         f"Time: {elapsed:.1f}s"
                     )
 
-                    # === LEARNING RATE SCHEDULING ===
                     scheduler.step(avg_val_loss)
 
-                    # === EARLY STOPPING & CHECKPOINTING ===
-                    print(f"avg_val_loss {avg_val_loss} < {best_val_loss}?")
                     if avg_val_loss < best_val_loss:
                         best_val_loss = avg_val_loss
                         patience_counter = 0
-
                         if save_best_model and checkpoint_dir:
-                            # Use parallel checkpoint saving
                             self._save_checkpoint_parallel(
                                 self.model,
                                 optimizer,
@@ -656,12 +545,6 @@ class AdvAutoencoder(nn.Module):
                                 best_val_loss,
                                 checkpoint_dir / "best_model.pth",
                             )
-
-                            # Store only best models
-                            # self.model = model
-                            # self.convEncoder = model.conv_encoder
-                            # self.outputEncoder = model.output_decoder
-                            # self.bridgeNetwork = model.bridge_network
                     else:
                         patience_counter += 1
 
@@ -674,22 +557,21 @@ class AdvAutoencoder(nn.Module):
             raise
 
         finally:
-            # Clean up resources
             self._cleanup_resources()
 
-        # Prepare results
         results = {
             "model_state_dict": self.model.state_dict(),
             "best_val_loss": best_val_loss,
             "final_epoch": epoch + 1,
             "train_losses": train_losses,
             "val_losses": val_losses,
-            "total_parameters": total_params,
-            "trainable_parameters": trainable_params,
+            "total_parameters": sum(p.numel() for p in self.model.parameters()),
+            "trainable_parameters": sum(
+                p.numel() for p in self.model.parameters() if p.requires_grad
+            ),
             "num_workers_used": num_workers,
             "optimized_batch_size": optimized_batch_size,
         }
-
         print(f"Training completed. Best validation loss: {best_val_loss:.6f}")
         return results
 
@@ -794,19 +676,23 @@ class AdvAutoencoder(nn.Module):
         return self.prepareDataset()
 
     def _validate_model_parallel(
-        self, model, val_loader, loss_weights, criterion, scaler=None
+        self, model, val_loader, loss_weights, criterion, scaler=None, device=None
     ):
-        """Parallel validation with CPU optimizations."""
+        """Parallel validation with GPU/CPU support."""
+        if device is None:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         val_loss = 0.0
         num_batches = 0
 
         for batch_input_y, batch_input_u, batch_targets in val_loader:
-            # Ensure contiguous memory
-            batch_input_y = batch_input_y.contiguous()
-            batch_input_u = batch_input_u.contiguous()
+            # Move data to the target device (GPU/CPU)
+            batch_input_y = batch_input_y.to(device, non_blocking=True).contiguous()
+            batch_input_u = batch_input_u.to(device, non_blocking=True).contiguous()
 
+            # Forward pass with optional mixed precision
             if scaler is not None:
-                with torch.cpu.amp.autocast():
+                with torch.cuda.amp.autocast(enabled=True):
                     outputs = model(batch_input_y, batch_input_u)
             else:
                 outputs = model(batch_input_y, batch_input_u)
@@ -817,9 +703,11 @@ class AdvAutoencoder(nn.Module):
                 "forwardError": outputs[4],
             }
 
+            # Calculate loss
             batch_loss, _ = self.calculate_weighted_loss(
                 output_dict, loss_weights, criterion
             )
+
             val_loss += batch_loss.item()
             num_batches += 1
 
