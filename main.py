@@ -113,7 +113,7 @@ class Options:
         self.batch_size = 24
         self.early_stopping_patience = 8
         self.min_delta = 0.000001
-        self.enableKAN = False
+        self.modelSelector = False
 
 
 if __name__ == "__main__":
@@ -192,11 +192,15 @@ if __name__ == "__main__":
     # Check KAN mode flag
     if len(sys.argv) > 10:
         if int(sys.argv[10]) == 1:
-            Option.enableKAN = True
+            Option.modelSelector = 1
             Option.n_layers = 3
             Option.n_neurons = 20
+        if int(sys.argv[10]) == 2:
+            Option.modelSelector = 2
+            Option.n_layers = 3
+            Option.n_neurons = 30
         else:
-            Option.enableKAN = False
+            Option.modelSelector = False
 
     warnings.filterwarnings("ignore")
 
@@ -217,7 +221,7 @@ if __name__ == "__main__":
         regularizerWeight=Option.regularizerWeight,
         stateSize=Option.stateSize,
         batch_size=Option.batch_size,
-        enableKAN=Option.enableKAN,
+        modelSelector=Option.modelSelector,
     )
     model.setDataset(U_n.copy(), Y_n.copy(), U_Vn.copy(), Y_Vn.copy())
 

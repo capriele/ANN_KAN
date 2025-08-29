@@ -13,6 +13,7 @@ import logging
 from pathlib import Path
 from ANNmodel import *
 import ANNmodelKAN as ann_kan
+import ANNmodelKoopman as ann_koopman
 import multiprocessing as mp
 import os
 import torch.multiprocessing as torch_mp
@@ -66,7 +67,7 @@ class AdvAutoencoder(nn.Module):
         affineStruct=True,
         regularizerWeight=0.0005,
         batch_size=24,
-        enableKAN=False,
+        modelSelector=False,
     ):
         super(AdvAutoencoder, self).__init__()
 
@@ -87,7 +88,7 @@ class AdvAutoencoder(nn.Module):
         self.shuffledIndexes = None
         self.constraintOnInputHiddenLayer = None
         self.batch_size = batch_size
-        self.enableKAN = enableKAN
+        self.modelSelector = modelSelector
         if useGroupLasso and regularizerWeight > 0.0:
             # self.constraintOnInputHiddenLayer=unit_norm();
             if stateReduction:
@@ -123,7 +124,7 @@ class AdvAutoencoder(nn.Module):
             self.Y_val = Y_val.copy()
 
     def encoderNetwork(self, future=0):
-        if self.enableKAN:
+        if self.modelSelector == 1:
             en = ann_kan.EncoderNetwork(
                 stride_len=self.strideLen,
                 n_u=self.N_U,
@@ -132,6 +133,22 @@ class AdvAutoencoder(nn.Module):
                 n_layer=self.n_layer,
                 state_size=self.stateSize,
                 nonlinearity=self.nonlinearity,
+            )
+        elif self.modelSelector == 2:
+            en = ann_koopman.EncoderNetwork(
+                stride_len=self.strideLen,
+                n_u=self.N_U,
+                n_y=self.N_Y,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                state_size=self.stateSize,
+                nonlinearity=self.nonlinearity,
+                kernel_regularizer=self.kernel_regularizer,
+                constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
+                use_group_lasso=self.useGroupLasso,
+                state_reduction=self.stateReduction,
+                input_layer_regularizer=self.inputLayerRegularizer,
+                future=future,
             )
         else:
             en = EncoderNetwork(
@@ -152,8 +169,18 @@ class AdvAutoencoder(nn.Module):
         return en
 
     def decoderNetwork(self, future=0):
-        if self.enableKAN:
+        if self.modelSelector == 1:
             dn = ann_kan.DecoderNetwork(
+                state_size=self.stateSize,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                output_window_len=self.outputWindowLen,
+                N_Y=self.N_Y,
+                affine_struct=self.affineStruct,
+            )
+        elif self.modelSelector == 2:
+            dn = ann_koopman.DecoderNetwork(
                 state_size=self.stateSize,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
@@ -175,8 +202,17 @@ class AdvAutoencoder(nn.Module):
         return dn
 
     def bridgeNetwork(self, future=0):
-        if self.enableKAN:
+        if self.modelSelector == 1:
             bn = ann_kan.BridgeNetwork(
+                state_size=self.stateSize,
+                N_U=self.N_U,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                affine_struct=self.affineStruct,
+            )
+        elif self.modelSelector == 2:
+            bn = ann_koopman.BridgeNetwork(
                 state_size=self.stateSize,
                 N_U=self.N_U,
                 n_neurons=self.n_neurons,
@@ -200,8 +236,19 @@ class AdvAutoencoder(nn.Module):
         bridgeNetwork = self.bridgeNetwork().to(device)
         convEncoder = self.encoderNetwork().to(device)
         outputEncoder = self.decoderNetwork().to(device)
-        if self.enableKAN:
+        if self.enableKAN == 1:
             ann = ann_kan.ANNModel(
+                stride_len=self.strideLen,
+                max_range=self.MaxRange,
+                n_y=self.N_Y,
+                n_u=self.N_U,
+                output_window_len=self.outputWindowLen,
+                encoder_network=convEncoder,
+                decoder_network=outputEncoder,
+                bridge_network=bridgeNetwork,
+            )
+        elif self.enableKAN == 2:
+            ann = ann_koopman.ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,
                 n_y=self.N_Y,

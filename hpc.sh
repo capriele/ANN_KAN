@@ -158,3 +158,8 @@ submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=
 # submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine3 "5 1 1 3 3 0 0 0 1"
 # submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine5 "5 1 1 5 5 0 0 0 1"
 # submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine35 "5 1 1 3 5 0 0 0 1"
+
+#####################################
+## The same tasks but with Koopman ##
+#####################################
+submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh NLTankNLF5Affine "5 1 1 6 10 1 0 0 2"
