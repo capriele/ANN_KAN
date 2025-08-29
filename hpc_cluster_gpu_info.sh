@@ -63,10 +63,3 @@ export LIBRARY_PATH=$HOME/local/python3.11/lib:$HOME/local/lib64:$HOME/local/lib
 #pyenv activate test_3_11
 
 nvidia-smi
-
-# Run your python task (replace script.py with your script name)
-#cd $HOME/pykan/ann_kan/
-#pip install -r requirements.txt
-./batchRun.sh $1 $2 $3 $4 $5 $6 $7 $8
-
-#pyenv deactivate

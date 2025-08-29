@@ -45,7 +45,10 @@ class EncoderNetwork(nn.Module):
         self.kan_network.speed(compile=True)
 
     def forward(self, inputs_y: torch.Tensor, inputs_u: torch.Tensor) -> torch.Tensor:
-        x = torch.cat([inputs_y.float(), inputs_u.float()], dim=-1)
+        device = next(self.parameters()).device
+        x = torch.cat(
+            [inputs_y.float().to(device), inputs_u.float().to(device)], dim=-1
+        ).to(device)
         return self.kan_network(x)
 
 
@@ -89,7 +92,8 @@ class DecoderNetwork(nn.Module):
         self.kan_network.speed(compile=True)
 
     def forward(self, inputs_state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        x = self.kan_network(inputs_state)
+        device = next(self.parameters()).device
+        x = self.kan_network(inputs_state.to(device))
         if self.affine_struct:
             x = x.view(-1, self.output_window_len, self.state_size)
             out = torch.sum(x * inputs_state.unsqueeze(1), dim=-1)
@@ -138,7 +142,10 @@ class BridgeNetwork(nn.Module):
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
         Tuple[torch.Tensor, torch.Tensor],
     ]:
-        input_concat = torch.cat([inputs_state.float(), inputs_novelU.float()], dim=-1)
+        device = next(self.parameters()).device
+        input_concat = torch.cat(
+            [inputs_state.float().to(device), inputs_novelU.float().to(device)], dim=-1
+        ).to(device)
         kan_output = self.kan_network(input_concat)
         bias = self.bridge_bias(kan_output)
         if self.affine_struct:
@@ -195,6 +202,10 @@ class ANNModel(nn.Module):
     def forward(
         self, inputs_y: torch.Tensor, inputs_u: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        device = next(self.parameters()).device
+        inputs_y = inputs_y.to(device)
+        inputs_u = inputs_u.to(device)
+
         batch_size = inputs_y.size(0)
         (
             prediction_error_collection,

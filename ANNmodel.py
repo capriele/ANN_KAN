@@ -50,7 +50,10 @@ class EncoderNetwork(nn.Module):
         return activations.get(nonlinearity, nn.ReLU())
 
     def forward(self, inputs_y: torch.Tensor, inputs_u: torch.Tensor) -> torch.Tensor:
-        x = torch.cat([inputs_y.float(), inputs_u.float()], dim=-1)
+        device = next(self.parameters()).device
+        x = torch.cat(
+            [inputs_y.float().to(device), inputs_u.float().to(device)], dim=-1
+        ).to(device)
         for layer in self.layers[:-1]:
             x = self.activation(layer(x))
         return self.layers[-1](x)
@@ -99,7 +102,8 @@ class DecoderNetwork(nn.Module):
         return activations.get(nonlinearity, nn.ReLU())
 
     def forward(self, inputs_state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        x = inputs_state
+        device = next(self.parameters()).device
+        x = inputs_state.to(device)
         for layer in self.layers:
             x = self.activation(layer(x))
         x = self.final_layer(x)
@@ -152,7 +156,10 @@ class BridgeNetwork(nn.Module):
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
         Tuple[torch.Tensor, torch.Tensor],
     ]:
-        input_concat = torch.cat([inputs_state.float(), inputs_novelU.float()], dim=-1)
+        device = next(self.parameters()).device
+        input_concat = torch.cat(
+            [inputs_state.float().to(device), inputs_novelU.float().to(device)], dim=-1
+        ).to(device)
         x = self.activation(self.bridge0(input_concat))
         for layer in self.hidden_layers:
             x = self.activation(layer(x))
@@ -194,6 +201,11 @@ class ANNModel(nn.Module):
     def forward(
         self, inputs_y: torch.Tensor, inputs_u: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+
+        device = next(self.parameters()).device
+        inputs_y = inputs_y.to(device)
+        inputs_u = inputs_u.to(device)
+
         batch_size = inputs_y.size(0)
         (
             prediction_error_collection,
@@ -238,12 +250,12 @@ class ANNModel(nn.Module):
         forwarded_predicted_error = (
             torch.cat(forwarded_predicted_error_collection, dim=1)
             if forwarded_predicted_error_collection
-            else torch.zeros_like(one_step_ahead_prediction_error[:, :1])
+            else torch.zeros_like(one_step_ahead_prediction_error[:, :1]).to(device)
         )
         forward_error = (
             torch.cat(forward_error_collection, dim=1)
             if forward_error_collection
-            else torch.zeros_like(one_step_ahead_prediction_error[:, :1])
+            else torch.zeros_like(one_step_ahead_prediction_error[:, :1]).to(device)
         )
 
         return (
