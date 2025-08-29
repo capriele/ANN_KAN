@@ -261,8 +261,8 @@ class AdvAutoencoder(nn.Module):
     ):
         tmp = self.privateTrainModel(
             [
-                {"kFPE": 0.0, "kAEPrediction": 10, "kForward": 0.3},
-                {"kFPE": 1.0, "kAEPrediction": 0, "kForward": 10},
+                {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
+                {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
             ],
             shuffled,
             early_stopping_patience=early_stopping_patience,
