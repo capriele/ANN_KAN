@@ -26,6 +26,8 @@ plt.rcParams["figure.dpi"] = 100
 plt.rcParams["font.size"] = 14
 plt.rcParams["text.usetex"] = False
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 # @unique
 class SystemSelectorEnum:
@@ -102,7 +104,7 @@ class Options:
         self.stateReduction = True
         self.regularizerWeight = 0.0001
         self.closedLoopSim = True
-        self.enablePlot = False
+        self.enablePlot = True
         self.stateSize = 6
         self.outputWindowLen = 2
         self.n_layers = 3
@@ -263,11 +265,12 @@ if __name__ == "__main__":
             asda = (
                 torch.cat(
                     [
-                        x0.T,
-                        utensor,
+                        x0.T.to(device),
+                        utensor.to(device),
                     ]
                 )
                 .detach()
+                .cpu()
                 .numpy()
             )
 
@@ -275,17 +278,17 @@ if __name__ == "__main__":
             if isinstance(logAB[i], tuple):
                 logAB[i] = list(logAB[i])
             if isinstance(logAB[i], torch.Tensor):
-                logAB[i] = logAB[i].detach().numpy()
+                logAB[i] = logAB[i].detach().cpu().numpy()
             if isinstance(logAB[i][1], torch.Tensor):
-                logAB[i][1] = logAB[i][1].detach().numpy()
+                logAB[i][1] = logAB[i][1].detach().cpu().numpy()
             if isinstance(logAB[i][2], torch.Tensor):
-                logAB[i][2] = logAB[i][2].detach().numpy()
+                logAB[i][2] = logAB[i][2].detach().cpu().numpy()
             if isinstance(logC[i], tuple):
                 logC[i] = list(logC[i])
             if isinstance(logC[i][0], torch.Tensor):
-                logC[i][0] = logC[i][0].detach().numpy()
+                logC[i][0] = logC[i][0].detach().cpu().numpy()
             if isinstance(logC[i][1], torch.Tensor):
-                logC[i][1] = logC[i][1].detach().numpy()
+                logC[i][1] = logC[i][1].detach().cpu().numpy()
 
             # Fixed: Proper reshaping to match original dimensions
             asda = np.reshape(asda, (Option.stateSize + 1, 1))
@@ -364,8 +367,8 @@ if __name__ == "__main__":
             x0RealSystem = np.zeros((simulatedSystem.stateSize,))
 
         x0 = model.model.conv_encoder(
-            torch.tensor(pastY, dtype=torch.float32).T,
-            torch.tensor(pastU, dtype=torch.float32).T,
+            torch.tensor(pastY, dtype=torch.float32).T.to(device),
+            torch.tensor(pastU, dtype=torch.float32).T.to(device),
         )
         logY = []
         logU = []
@@ -388,18 +391,18 @@ if __name__ == "__main__":
             pastY = np.reshape(np.append(pastY, y_kReal)[1:], (model.strideLen, 1))
             if i < openLoopStartingPoint or (i % _reset == 0 and _reset > 0):
                 x0 = model.model.conv_encoder(
-                    torch.tensor(pastY, dtype=torch.float32).T,
-                    torch.tensor(pastU, dtype=torch.float32).T,
+                    torch.tensor(pastY, dtype=torch.float32).T.to(device),
+                    torch.tensor(pastU, dtype=torch.float32).T.to(device),
                 )
                 print("*", end="")
             else:
                 x0 = model.model.bridge_network(
-                    torch.tensor(u, dtype=torch.float32),
-                    torch.tensor(x0, dtype=torch.float32),
+                    torch.tensor(u, dtype=torch.float32).to(device),
+                    torch.tensor(x0, dtype=torch.float32).to(device),
                 )[0]
             y = model.model.output_decoder(x0)[1]
             if i >= openLoopStartingPoint:
-                logY += [(y[0][-2]).detach().numpy()]
+                logY += [(y[0][-2]).detach().cpu().numpy()]
                 logYR += [y_kReal[0]]
                 logU += [u[0]]
             print(".", end="")
@@ -430,6 +433,7 @@ if __name__ == "__main__":
             (et,) = plt.plot(np.array(logY) - np.array(logYR))
             plt.tight_layout()
             plt.legend([y, yr, et], ["$\hat y$", "$y_{real}$", "estimation error"])
+            plt.savefig(f"open_loop_simulation.png")  # <-- Save to PNG file
         return fit, NRMSE, logY, logYR
 
     # %% Model Validation Validation
@@ -465,8 +469,8 @@ if __name__ == "__main__":
         pastU = np.zeros((model.strideLen, 1))
         x0RealSystem = np.zeros((simulatedSystem.stateSize,))
         x0 = model.model.conv_encoder(
-            torch.tensor(pastY, dtype=torch.float32).T,
-            torch.tensor(pastU, dtype=torch.float32).T,
+            torch.tensor(pastY, dtype=torch.float32).T.to(device),
+            torch.tensor(pastU, dtype=torch.float32).T.to(device),
         )
         bounds = [(-0.8, 0.8) for i in range(0, MPCHorizon)]
         #    bounds=[(-1,1) for i in range(0,MPCHorizon)]
@@ -475,8 +479,8 @@ if __name__ == "__main__":
         logY += [0]
         for i in range(0, 400):
             x0 = model.model.conv_encoder(
-                torch.tensor(pastY, dtype=torch.float32).T,
-                torch.tensor(pastU, dtype=torch.float32).T,
+                torch.tensor(pastY, dtype=torch.float32).T.to(device),
+                torch.tensor(pastU, dtype=torch.float32).T.to(device),
             )
             r = [
                 0.7 * np.array([[np.sin(j / (20 + 0.01 * j))]]) + 0.7
@@ -512,6 +516,24 @@ if __name__ == "__main__":
         end = time.time()
         print("\n")
         if Option.enablePlot:
+            logY = np.array(
+                [
+                    np.squeeze(y).item() if hasattr(y, "item") else float(np.squeeze(y))
+                    for y in logY
+                ]
+            )
+            logYR = np.array(
+                [
+                    np.squeeze(y).item() if hasattr(y, "item") else float(np.squeeze(y))
+                    for y in logYR
+                ]
+            )
+            logU = np.array(
+                [
+                    np.squeeze(u).item() if hasattr(u, "item") else float(np.squeeze(u))
+                    for u in logU
+                ]
+            )
             plt.figure()
             plt.title("Closed loop simulaton")
             (uP,) = plt.plot(logU)
@@ -520,7 +542,7 @@ if __name__ == "__main__":
             (rP,) = plt.plot(logY)
             plt.tight_layout()
             plt.legend([uP, yP, rP], ["$u_k$", "$y_k$", "$r_k$"])
-            plt.savefig("closed_loop_simulation.png")  # <-- Save to PNG file
+            plt.savefig(f"closed_loop_simulation.png")  # <-- Save to PNG file
         print("elapsed time in MPC:", end - start)
     # print(fit)
     # %% Feature Importance
