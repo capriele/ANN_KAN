@@ -236,7 +236,7 @@ class AdvAutoencoder(nn.Module):
         bridgeNetwork = self.bridgeNetwork().to(device)
         convEncoder = self.encoderNetwork().to(device)
         outputEncoder = self.decoderNetwork().to(device)
-        if self.enableKAN == 1:
+        if self.modelSelector == 1:
             ann = ann_kan.ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,
@@ -247,7 +247,7 @@ class AdvAutoencoder(nn.Module):
                 decoder_network=outputEncoder,
                 bridge_network=bridgeNetwork,
             )
-        elif self.enableKAN == 2:
+        elif self.modelSelector == 2:
             ann = ann_koopman.ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,
