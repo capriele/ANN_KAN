@@ -13,7 +13,7 @@ rm *.out
 # Get all job IDs for the current user and cancel them
 user=$(whoami)
 for job in $(squeue -u "$user" -h -o "%A"); do
-    scancel "$job"
+   scancel "$job"
 done
 
 wait_for_job() {
@@ -53,10 +53,10 @@ submit_and_wait() {
     fi
     
     # Update the last job ID for next submission
-    LAST_JOB_ID=$jobid
+    #LAST_JOB_ID=$jobid
     
     # Return the job ID for potential use
-    echo $LAST_JOB_ID
+    #echo $LAST_JOB_ID
 }
 
 #################################
@@ -163,3 +163,4 @@ submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=
 ## The same tasks but with Koopman ##
 #####################################
 submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh NLTankNLF5Affine "5 1 1 6 10 1 0 0 2"
+submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh NLTankNLF5NonAffine "5 1 1 6 10 0 0 0 2"

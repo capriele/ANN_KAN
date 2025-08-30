@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Extract the last argument from the input string
-last_arg="${10}"
+last_arg="$(echo "${10}" | grep -oE '[^ ]+$')"
 
 if [ "$last_arg" = "1" ]; then
     mkdir -p results_kan

@@ -49,24 +49,43 @@ export PKG_CONFIG_PATH=$HOME/local/lib/pkgconfig:$PKG_CONFIG_PATH
 export CPATH=$HOME/local/include:$CPATH
 export LIBRARY_PATH=$HOME/local/python3.11/lib:$HOME/local/lib64:$HOME/local/lib/pkgconfig:$HOME/local/lib:$LIBRARY_PATH
 
-# cd $HOME/local/src
-# cd Python-3.11.6
+# Assign default values to $9 and ${10} if they are not provided
+arg9="${9:-0}"
+arg10="${10:-0}"
 
-# ./configure --prefix=$HOME/local/python3.11 --enable-shared --enable-optimizations CPPFLAGS="-I$HOME/local/include" LDFLAGS="-L$HOME/local/lib -L$HOME/local/lib64" PKG_CONFIG_PATH="$HOME/local/lib/pkgconfig"
+##./batchRun.sh $1 $2 $3 $4 $5 $6 $7 $8 $arg9 $arg10
 
-# make -j
-# make install
+# Extract the last argument from the input string
+last_arg="$(echo "${2}" | grep -oE '[^ ]+$')"
+echo "LAST ARG: $last_arg"
+if [ "$last_arg" = "1" ]; then
+    mkdir -p results_kan
+    filename="results_kan/${1}.txt"
+elif [ "$last_arg" = "2" ]; then
+    mkdir -p results_koopman
+    filename="results_koopman/${1}.txt"
+else
+    mkdir -p results
+    filename="results/${1}.txt"
+fi
 
-# Try with minimal build
-#PYTHON_CONFIGURE_OPTS="--enable-shared --with-ensurepip=install" pyenv install 3.11.6
-#pyenv virtualenv 3.11.6 test_3_11
-#pyenv activate test_3_11
-
-nvidia-smi
-
-# Run your python task (replace script.py with your script name)
-#cd $HOME/pykan/ann_kan/
-#pip install -r requirements.txt
-./batchRun.sh $1 $2 $3 $4 $5 $6 $7 $8
-
-#pyenv deactivate
+rm -f "$filename"
+touch "$filename"
+echo $filename
+for arg in "$@"; do
+  echo "Arg $n: $arg"
+  ((n++))
+done
+echo ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10}
+i=1
+python3 -W ignore main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10} | tee >(egrep "para|systemSelector|fit|NRMSE|f1|elapsed|evaluating|encoder|decoder|bridge" >> "$filename")
+if [ "$last_arg" = "1" ]; then
+  mv "closed_loop_simulation.png" "results_kan/${1}_closed_loop_simulation.png"
+  mv "open_loop_simulation.png" "results_kan/${1}_open_loop_simulation.png"
+elif [ "$last_arg" = "2" ]; then
+  mv "closed_loop_simulation.png" "results_koopman/${1}_closed_loop_simulation.png"
+  mv "open_loop_simulation.png" "results_koopman/${1}_open_loop_simulation.png"
+else
+  mv "closed_loop_simulation.png" "results/${1}_closed_loop_simulation.png"
+  mv "open_loop_simulation.png" "results/${1}_open_loop_simulation.png"
+fi

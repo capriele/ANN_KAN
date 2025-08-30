@@ -231,6 +231,18 @@ if __name__ == "__main__":
         early_stopping_patience=Option.early_stopping_patience,
         min_delta=Option.min_delta,
     )
+    """
+    # If you want load a previous model without training
+    model.model, _, _, _ = model.ANNModel()
+    model.model.load_state_dict(
+        torch.load(
+            "dumps/model_{0}_{1}.mat".format(
+                Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
+            ),
+            weights_only=True,
+        )
+    )
+    """
     (
         predictedLeft,
         stateLeft,
@@ -262,20 +274,14 @@ if __name__ == "__main__":
         uSequence = np.array(uSequence)
         um1 = np.array(um1)
         i = 0
+        x0 = x0.detach().cpu().numpy()[:, 0]
         for u in uSequence:
             # u=np.reshape(u,(1,1))
-            x0 = torch.tensor(x0, dtype=torch.float32)
-            utensor = torch.tensor([[u]], dtype=torch.float32)
-            asda = (
-                torch.cat(
-                    [
-                        x0.T.to(device),
-                        utensor.to(device),
-                    ]
-                )
-                .detach()
-                .cpu()
-                .numpy()
+            asda = np.concatenate(
+                [
+                    x0,
+                    [u],
+                ]
             )
 
             # check if logab is a torch tensor
@@ -301,14 +307,12 @@ if __name__ == "__main__":
             x0 = np.dot(logAB[i][1], asda)
             x0 = x0 + np.reshape(logAB[i][2], (Option.stateSize, 1))
 
+            # Output computation using logC[i][1] (C matrix)
+            y = np.dot(logC[i][0], x0)
+            logY += [y[0][-1]]
+
             # Update x0 for next iteration - convert back to proper shape
             x0 = x0.squeeze()
-            if x0.ndim == 1:
-                x0 = np.reshape(x0, (1, Option.stateSize))
-
-            # Output computation using logC[i][1] (C matrix)
-            y = np.dot(logC[i][0].squeeze(), x0.T)
-            logY += [y[0][-1]]
 
             i = i + 1
         #    logY+=[y[0][1]]
@@ -318,7 +322,7 @@ if __name__ == "__main__":
             0.001 * np.sum(np.square(uSequence))
             + 0.01 * np.sum(np.square(uSequence[1:] - uSequence[:-1]))
             + 0.01 * np.sum(np.square(uSequence[0] - um1))
-            + np.sum(np.square(logY - r)) * 1
+            + np.sum(np.square(logY - r)) * 2
         )
         return cost
 
@@ -465,9 +469,11 @@ if __name__ == "__main__":
     u = [U_Vn[0]]
 
     if Option.closedLoopSim and Option.affineStruct:
-        logY = []
-        logU = []
-        logYR = []
+        NUM_ITERATIONS = 400
+        REF_AMPLITUDE = 0.7
+        REF_PERIOD = 20
+        REF_DECAY = 0.01
+        logY, logU, logYR = [], [], []
         MPCHorizon = Option.horizon
         pastY = np.zeros((model.strideLen, 1))
         pastU = np.zeros((model.strideLen, 1))
@@ -476,49 +482,51 @@ if __name__ == "__main__":
             torch.tensor(pastY, dtype=torch.float32).T.to(device),
             torch.tensor(pastU, dtype=torch.float32).T.to(device),
         )
-        bounds = [(-0.8, 0.8) for i in range(0, MPCHorizon)]
-        #    bounds=[(-1,1) for i in range(0,MPCHorizon)]
-        pastRes = np.ones((MPCHorizon)) * 0
+        bounds = [(-1.5, 1.5) for _ in range(MPCHorizon)]
+        pastRes = np.zeros((MPCHorizon,))
+        u = np.zeros((1, 1))
         start = time.time()
-        logY += [0]
-        for i in range(0, 400):
+
+        for i in range(NUM_ITERATIONS):
             x0 = model.model.conv_encoder(
                 torch.tensor(pastY, dtype=torch.float32).T.to(device),
                 torch.tensor(pastU, dtype=torch.float32).T.to(device),
             )
             r = [
-                0.7 * np.array([[np.sin(j / (20 + 0.01 * j))]]) + 0.7
+                REF_AMPLITUDE * np.array([[np.sin(j / (REF_PERIOD + REF_DECAY * j))]])
+                + REF_AMPLITUDE
                 for j in range(i, i + MPCHorizon)
             ]
-            #        if i>200:
-            #            r=1+r*0
-            #        else:
-            #            r=-1+r*0
-            #        r=np.array([[.5+1.5*np.sin(i/(50+i/100))]])
-            #    r=0.5*np.array([[np.sin(i/(20+0.01*i))]])+1
-            #    r=np.array([[1.5+np.sin(i/(50+i/100))]])
-            logY += [r[0][0]]
-            for _ in range(0, Option.TRsteps):
+            logY.append(r[0][0])
+
+            for _ in range(Option.TRsteps):
                 logAB, logC = prepareMatrices(pastRes, x0)
 
-                def lamdaCostFunction(x):
-                    return costFunction(x, r, u[0][0], logAB, logC, x0)
+                def lambdaCostFunction(x):
+                    return costFunction(x, r, u[0, 0], logAB, logC, x0.T)
 
-                result = optimize.minimize(lamdaCostFunction, pastRes, bounds=bounds)
+                result = optimize.minimize(
+                    lambdaCostFunction,
+                    pastRes,
+                    bounds=bounds,
+                    method="SLSQP",
+                )
                 u = np.array(result.x[0]).reshape((1, 1))
                 pastRes = result.x
-            pastRes[0:-1] = pastRes[1:]
-            # pastRes[-1]=0
+
+            pastRes[:-1] = pastRes[1:]
             y_kReal, x0RealSystem = simulatedSystem.loop(x0RealSystem, u)
             x0RealSystem = x0RealSystem.copy()
-            pastU = np.reshape(np.append(pastU, u)[1:], (model.strideLen, 1))
-            pastY = np.reshape(np.append(pastY, y_kReal)[1:], (model.strideLen, 1))
-            logYR += [y_kReal[0]]
-            logU += [u[0]]
-            print(".", end="")
+            pastU = np.roll(pastU, -1, axis=0)
+            pastU[-1, :] = u.T
+            pastY = np.roll(pastY, -1, axis=0)
+            pastY[-1, :] = y_kReal
+            logYR.append(y_kReal[0])
+            logU.append(u[0, 0])
 
         end = time.time()
-        print("\n")
+        print("\nElapsed time in MPC:", end - start)
+
         if Option.enablePlot:
             logY = np.array(
                 [
@@ -539,15 +547,14 @@ if __name__ == "__main__":
                 ]
             )
             plt.figure()
-            plt.title("Closed loop simulaton")
+            plt.title("Closed loop simulation")
             (uP,) = plt.plot(logU)
             plt.grid()
             (yP,) = plt.plot(logYR)
             (rP,) = plt.plot(logY)
             plt.tight_layout()
             plt.legend([uP, yP, rP], ["$u_k$", "$y_k$", "$r_k$"])
-            plt.savefig(f"closed_loop_simulation.png")  # <-- Save to PNG file
-        print("elapsed time in MPC:", end - start)
+            plt.savefig("closed_loop_simulation.png")
     # print(fit)
     # %% Feature Importance
     if Option.useGroupLasso:
@@ -589,6 +596,12 @@ if __name__ == "__main__":
         plt.tight_layout()
 
     print(Option.__dict__)
+    torch.save(
+        model.model.state_dict(),
+        "dumps/model_{0}_{1}.mat".format(
+            Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
+        ),
+    )
     scipy.io.matlab.savemat(
         "dumps/dump_{0}_{1}.mat".format(
             Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
