@@ -80,12 +80,48 @@ echo ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10}
 i=1
 python3 -W ignore main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10} | tee >(egrep "para|systemSelector|fit|NRMSE|f1|elapsed|evaluating|encoder|decoder|bridge" >> "$filename")
 if [ "$last_arg" = "1" ]; then
-  mv "closed_loop_simulation.png" "results_kan/${1}_closed_loop_simulation.png"
-  mv "open_loop_simulation.png" "results_kan/${1}_open_loop_simulation.png"
+    # Create target directory if it doesn't exist
+    mkdir -p "dumps/kan/"
+
+    # Move dump files if they exist
+    for file in dumps/dump*.mat; do
+        if [ -f "$file" ]; then
+            mv "$file" "dumps/kan/${1}_dump.mat"
+            break  # Move only the first match, or remove this line to move all
+        fi
+    done
+
+    # Move model files if they exist
+    for file in dumps/model*.mat; do
+        if [ -f "$file" ]; then
+            mv "$file" "dumps/kan/${1}_model.mat"
+            break  # Move only the first match, or remove this line to move all
+        fi
+    done
+    mv "closed_loop_simulation.png" "results_kan/${1}_closed_loop_simulation.png"
+    mv "open_loop_simulation.png" "results_kan/${1}_open_loop_simulation.png"
 elif [ "$last_arg" = "2" ]; then
-  mv "closed_loop_simulation.png" "results_koopman/${1}_closed_loop_simulation.png"
-  mv "open_loop_simulation.png" "results_koopman/${1}_open_loop_simulation.png"
+    # Create target directory if it doesn't exist
+    mkdir -p "dumps/koopman/"
+
+    # Move dump files if they exist
+    for file in dumps/dump*.mat; do
+        if [ -f "$file" ]; then
+            mv "$file" "dumps/koopman/${1}_dump.mat"
+            break  # Move only the first match, or remove this line to move all
+        fi
+    done
+
+    # Move model files if they exist
+    for file in dumps/model*.mat; do
+        if [ -f "$file" ]; then
+            mv "$file" "dumps/koopman/${1}_model.mat"
+            break  # Move only the first match, or remove this line to move all
+        fi
+    done
+    mv "closed_loop_simulation.png" "results_koopman/${1}_closed_loop_simulation.png"
+    mv "open_loop_simulation.png" "results_koopman/${1}_open_loop_simulation.png"
 else
-  mv "closed_loop_simulation.png" "results/${1}_closed_loop_simulation.png"
-  mv "open_loop_simulation.png" "results/${1}_open_loop_simulation.png"
+    mv "closed_loop_simulation.png" "results/${1}_closed_loop_simulation.png"
+    mv "open_loop_simulation.png" "results/${1}_open_loop_simulation.png"
 fi

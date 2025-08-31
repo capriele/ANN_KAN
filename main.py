@@ -110,7 +110,7 @@ class Options:
         self.n_layers = 3
         self.n_neurons = 30
         self.epochs = 300
-        self.batch_size = 24
+        self.batch_size = 24 * 2
         self.early_stopping_patience = 8
         self.min_delta = 0.000001
         self.modelSelector = False
@@ -192,10 +192,12 @@ if __name__ == "__main__":
     # Check KAN mode flag
     if len(sys.argv) > 10:
         if int(sys.argv[10]) == 1:
+            print("Enable KAN model")
             Option.modelSelector = 1
             Option.n_layers = 3
             Option.n_neurons = 20
-        if int(sys.argv[10]) == 2:
+        elif int(sys.argv[10]) == 2:
+            print("Enable Koopman model")
             Option.modelSelector = 2
             Option.n_layers = 3
             Option.n_neurons = 30
@@ -319,10 +321,10 @@ if __name__ == "__main__":
         logY = np.array(logY)
         #    print(logY-r)
         cost = (
-            0.001 * np.sum(np.square(uSequence))
-            + 0.01 * np.sum(np.square(uSequence[1:] - uSequence[:-1]))
-            + 0.01 * np.sum(np.square(uSequence[0] - um1))
-            + np.sum(np.square(logY - r)) * 2
+            0.04 * np.sum(np.square(uSequence))
+            + 0.1 * np.sum(np.square(uSequence[1:] - uSequence[:-1]))
+            + 0.1 * np.sum(np.square(uSequence[0] - um1))
+            + np.sum(np.square(logY - r)) * 5
         )
         return cost
 
