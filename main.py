@@ -262,6 +262,12 @@ if __name__ == "__main__":
         early_stopping_patience=Option.early_stopping_patience,
         min_delta=Option.min_delta,
     )
+    torch.save(
+        model.model.state_dict(),
+        "dumps/model_{0}_{1}.mat".format(
+            Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
+        ),
+    )
     # If you want load a previous model without training
     # model.model, _, _, _ = model.ANNModel()
     # model.model.load_state_dict(
@@ -677,12 +683,6 @@ if __name__ == "__main__":
         plt.tight_layout()
 
     print(Option.__dict__)
-    torch.save(
-        model.model.state_dict(),
-        "dumps/model_{0}_{1}.mat".format(
-            Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
-        ),
-    )
     scipy.io.matlab.savemat(
         "dumps/dump_{0}_{1}.mat".format(
             Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
