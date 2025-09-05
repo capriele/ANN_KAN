@@ -283,80 +283,31 @@ class AdvAutoencoder(nn.Module):
         if Y is None:
             Y = self.Y
 
-        _strideLen = self.strideLen
+        pad = self.MaxRange - 2
+        _strideLen = self.strideLen + self.MaxRange - 2
         lenDS = U.shape[0]
 
         # Calculate the number of samples after padding and striding
-        num_samples = lenDS - (self.N_U + self.N_Y) * _strideLen
-        num_samples_u = (lenDS) // (_strideLen * self.N_U)
-        num_samples_y = (lenDS) // (_strideLen * self.N_Y)
-        num_samples = min(num_samples_u, num_samples_y)
+        num_samples = lenDS - 2
 
         # Initialize input and output vectors with correct dimensions
-        inputVector = np.zeros((num_samples, self.N_U * _strideLen))
-        outputVector = np.zeros((num_samples, self.N_Y * _strideLen))
-        print(self.N_U, _strideLen, inputVector.shape)
-        print(self.N_Y, _strideLen, outputVector.shape)
+        inputVector = np.zeros((num_samples, _strideLen + 2, self.N_U))
+        outputVector = np.zeros((num_samples, _strideLen + 2, self.N_Y))
+        print(self.N_U, _strideLen, inputVector.shape, U.shape)
+        print(self.N_Y, _strideLen, outputVector.shape, Y.shape)
 
-        j = 0
-        for i in range(0, lenDS, _strideLen * self.N_U):
+        offset = self.strideLen + 1 + pad
+        for i in range(offset, lenDS):
             # Extract input and output windows
-            input_window = U[
-                i : i + _strideLen * self.N_U, :
-            ]  # Shape: (_strideLen, N_U)
-            # print(i, inputVector.shape)
-            # print(input_window.shape)
+            input_window = U[i - _strideLen - 1 : i + 1]
+            inputVector[i - offset] = input_window
 
-            if input_window.shape[0] == inputVector.shape[1]:
-                # Flatten the windows and store in the vectors
-                for k in range(self.N_U):
-                    inputVector[j] = input_window[:, k]
-                    j += 1
-                    if j >= num_samples:
-                        break
-
-            if j >= num_samples:
-                break
-
-        j = 0
-        for i in range(0, lenDS, _strideLen * self.N_Y):
-            # Extract input and output windows
-            output_window = Y[
-                i : i + _strideLen * self.N_Y, :
-            ]  # Shape: (_strideLen, N_Y)
-            # print(outputVector.shape)
-            # print(output_window.shape)
-
-            if output_window.shape[0] == outputVector.shape[1]:
-                # Flatten the windows and store in the vectors
-                for k in range(self.N_Y):
-                    outputVector[j] = output_window[:, k]
-                    j += 1
-                    if j >= num_samples:
-                        break
-
-            if j >= num_samples:
-                break
+            output_window = Y[i - _strideLen - 1 : i + 1]
+            outputVector[i - offset] = output_window
 
         # Convert to PyTorch tensors
         inputTensor = torch.tensor(inputVector, dtype=torch.float32)
         outputTensor = torch.tensor(outputVector, dtype=torch.float32)
-        print(inputTensor.shape)
-        print(outputTensor.shape)
-        inputTensor = torch.tensor(
-            U.reshape(
-                int(self.U.shape[0] / self.strideLen),
-                int(self.U.shape[1] * self.strideLen),
-            ),
-            dtype=torch.float32,
-        )
-        outputTensor = torch.tensor(
-            Y.reshape(
-                int(self.Y.shape[0] / self.strideLen),
-                int(self.Y.shape[1] * self.strideLen),
-            ),
-            dtype=torch.float32,
-        )
         return inputTensor, outputTensor
 
     def trainModel(
@@ -368,9 +319,8 @@ class AdvAutoencoder(nn.Module):
     ):
         tmp = self.privateTrainModel(
             [
-                {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                # {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
+                {"kFPE": 0, "kAEPrediction": 10, "kForward": 3},
+                {"kFPE": 1, "kAEPrediction": 0, "kForward": 3},
             ],
             shuffled,
             early_stopping_patience=early_stopping_patience,

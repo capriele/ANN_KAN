@@ -153,10 +153,10 @@ class SpacecraftNonlinear:
         self.stdY = np.std(y_n, axis=0)
         self.stdU = np.std(u_n, axis=0)
 
-        y_n = y_n + np.random.normal(0, 0.02, (sizeT, self.outputSize))
-        y_Vn = y_Vn + np.random.normal(0, 0.02, (sizeV, self.outputSize))
-        u_n = u_n + np.random.normal(0, 0.02, (sizeT, self.inputSize))
-        u_Vn = u_Vn + np.random.normal(0, 0.02, (sizeV, self.inputSize))
+        y_n = (y_n - self.meanY) / self.stdY
+        y_Vn = (y_Vn - self.meanY) / self.stdY
+        u_n = (u_n - self.meanU) / self.stdU
+        u_Vn = (u_Vn - self.meanU) / self.stdU
 
         return (
             u_n.reshape((sizeT, self.inputSize)),
