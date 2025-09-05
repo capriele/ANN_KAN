@@ -114,7 +114,7 @@ class DecoderNetwork(nn.Module):
         x = self.final_layer(x)
         if self.affine_struct:
             x = x.view(-1, self.output_window_len, self.N_Y, self.state_size)
-            out = torch.sum(x * inputs_state.unsqueeze(1).unsqueeze(1), dim=2)
+            out = torch.sum(x * inputs_state.unsqueeze(1).unsqueeze(1), dim=-1)
             return x, out
         return x, x
 
