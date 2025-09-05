@@ -57,6 +57,7 @@ class EncoderNetwork(nn.Module):
             "tanh": nn.Tanh(),
             "sigmoid": nn.Sigmoid(),
             "leaky_relu": nn.LeakyReLU(),
+            "linear": nn.Identity(),
         }
         return activations.get(nonlinearity, nn.ReLU())
 
@@ -98,7 +99,9 @@ class DecoderNetwork(nn.Module):
         for _ in range(n_layer - 1):
             self.layers.append(nn.Linear(n_neurons, n_neurons))
         out_dim = (
-            output_window_len * state_size if affine_struct else output_window_len * N_Y
+            output_window_len * state_size * self.N_Y
+            if affine_struct
+            else output_window_len * N_Y
         )
         self.final_layer = nn.Linear(n_neurons, out_dim)
 
@@ -118,6 +121,7 @@ class DecoderNetwork(nn.Module):
             "tanh": nn.Tanh(),
             "sigmoid": nn.Sigmoid(),
             "leaky_relu": nn.LeakyReLU(),
+            "linear": nn.Identity(),
         }
         return activations.get(nonlinearity, nn.ReLU())
 
@@ -127,11 +131,15 @@ class DecoderNetwork(nn.Module):
         for layer in self.layers:
             x = self.activation(layer(x))
         x = self.final_layer(x)
+        # print(inputs_state.shape)
         if self.affine_struct:
-            x = x.view(-1, self.output_window_len, self.state_size)
-            # out = torch.sum(x * inputs_state.unsqueeze(1), dim=1)
-            out = torch.sum(x * inputs_state.unsqueeze(1), dim=1)
-            # out = torch.mul(x, inputs_state.unsqueeze(1))
+            # print(x.shape)
+            x = x.view(-1, self.output_window_len, self.N_Y, self.state_size)
+            # print(x.shape)
+            # print(inputs_state.unsqueeze(2).shape)
+            out = torch.einsum("abcd,acd->abc", x, inputs_state.unsqueeze(2))
+            # print(out.shape)
+            # print("---")
             return x, out
         return x, x
 
@@ -184,6 +192,7 @@ class BridgeNetwork(nn.Module):
             "relu": F.relu,
             "tanh": torch.tanh,
             "sigmoid": torch.sigmoid,
+            "linear": nn.Identity(),
         }
         return activations.get(nonlinearity, F.relu)
 
@@ -253,76 +262,25 @@ class ANNModel(nn.Module):
         predicted_ok_collection, state_k_collection = [], []
         forwarded_state = None
 
-        total_length_y = inputs_y.shape[1]
-        total_length_u = inputs_u.shape[1]
         for k in range(self.max_range):
-            # Slice the input sequences for y and u
-            start_y = (self.n_y * k) % total_length_y
-            end_y = (self.n_y * k + self.n_y * self.stride_len) % total_length_y
+            i_yk = inputs_y[:, k : self.stride_len + k]
+            i_uk = inputs_u[:, k : self.stride_len + k]
+            target_start = self.stride_len + k - self.output_window_len + 1
+            target_end = self.stride_len + k + 1
+            i_target_k = inputs_y[:, target_start:target_end]
+            novel_i_uk = inputs_u[:, self.stride_len + k : self.stride_len + k + 1]
 
-            # Handle the case where the indices wrap around
-            if start_y < end_y:
-                i_yk = inputs_y[:, start_y:end_y]
-            else:
-                i_yk = torch.cat((inputs_y[:, start_y:], inputs_y[:, :end_y]), dim=1)
-
-            # Calculate the start and end indices for i_uk with modulo
-            start_u = (self.n_u * k) % total_length_u
-            end_u = (self.n_u * k + self.n_u * self.stride_len) % total_length_u
-
-            # Handle the case where the indices wrap around
-            if start_u < end_u:
-                i_uk = inputs_u[:, start_u:end_u]
-            else:
-                i_uk = torch.cat((inputs_u[:, start_u:], inputs_u[:, :end_u]), dim=1)
-
-            # Calculate target indices for y (output size is now n_u)
-            # target_start = (self.stride_len + k + 1) % inputs_y.shape[1]
-            # target_end = (
-            #     self.stride_len + k + 1 + self.n_y * self.output_window_len
-            # ) % inputs_y.shape[
-            #     1
-            # ]  # Output size is n_y
-            target_start = self.n_y * k % inputs_y.shape[1]
-            target_end = self.n_y * (k + 1) % inputs_y.shape[1]
-
-            # Handle wrap-around for i_target_k
-            if target_end < target_start:
-                i_target_k = torch.cat(
-                    (inputs_y[:, target_start:], inputs_y[:, :target_end]), dim=1
-                )
-            else:
-                i_target_k = inputs_y[:, target_start:target_end]
-
-            # Calculate novel input indices for u (input size is now n_u)
-            novel_start = (self.n_u * k) % inputs_u.shape[1]
-            novel_end = (self.n_u * (k + 1)) % inputs_u.shape[1]  # Input size is n_u
-
-            # Handle wrap-around for novel_i_uk
-            if novel_end < novel_start:
-                novel_i_uk = torch.cat(
-                    (inputs_u[:, novel_start:], inputs_u[:, :novel_end]), dim=1
-                )
-            else:
-                novel_i_uk = inputs_u[:, novel_start:novel_end]
-
-            # Encode and decode
-            # print(inputs_y.shape)
-            # print(inputs_u.shape)
-            # print(target_start, target_end)
-            # print(i_target_k.shape)
-            # print(novel_i_uk.shape)
-            state_k = self.conv_encoder(i_yk, i_uk)
+            state_k = self.conv_encoder(
+                i_yk.reshape(i_yk.shape[0], -1), i_uk.reshape(i_uk.shape[0], -1)
+            )
             predicted_ok = self.output_decoder(state_k)[1]
             predicted_ok_collection.append(predicted_ok)
             state_k_collection.append(state_k)
-            # print(predicted_ok.shape)
-            i_target_k = torch.reshape(i_target_k, predicted_ok.shape)
             prediction_error_collection.append(torch.abs(predicted_ok - i_target_k))
 
             if forwarded_state is not None:
                 forwarded_state_n = []
-                bridge_output = self.bridge_network(novel_i_uk, state_k)[0]
+                bridge_output = self.bridge_network(novel_i_uk.squeeze(1), state_k)[0]
                 forwarded_state_n.append(bridge_output)
                 for this_f in forwarded_state:
                     forward_error_collection.append(torch.abs(state_k - this_f))
@@ -330,11 +288,14 @@ class ANNModel(nn.Module):
                     forwarded_predicted_error_collection.append(
                         forwarded_predicted_output_k - i_target_k
                     )
-                    bridge_output_f = self.bridge_network(novel_i_uk, this_f)[0]
+                    bridge_output_f = self.bridge_network(
+                        novel_i_uk.squeeze(1), this_f
+                    )[0]
                     forwarded_state_n.append(bridge_output_f)
                 forwarded_state = forwarded_state_n
             else:
-                bridge_output = self.bridge_network(novel_i_uk, state_k)[0]
+                # print(novel_i_uk.shape, state_k.shape)
+                bridge_output = self.bridge_network(novel_i_uk.squeeze(1), state_k)[0]
                 forwarded_state = [bridge_output]
 
         one_step_ahead_prediction_error = torch.cat(prediction_error_collection, dim=1)

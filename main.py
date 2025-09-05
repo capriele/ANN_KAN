@@ -400,14 +400,14 @@ if __name__ == "__main__":
         validationOnMultiHarmonic=True, _reset=-1, YTrue=None, U_Vn=None
     ):
         openLoopStartingPoint = Option.openLoopStartingPoint
-        pastY = np.zeros((Option.outputSize * model.strideLen, 1))
-        pastU = np.zeros((Option.inputSize * model.strideLen, 1))
+        pastY = torch.zeros((model.strideLen, Option.outputSize))
+        pastU = torch.zeros((model.strideLen, Option.inputSize))
         if YTrue is None:
             x0RealSystem = np.zeros((simulatedSystem.stateSize,))
 
         x0 = model.model.conv_encoder(
-            torch.tensor(pastY, dtype=torch.float32).T.to(device),
-            torch.tensor(pastU, dtype=torch.float32).T.to(device),
+            torch.tensor(pastY, dtype=torch.float32).reshape(-1).T.to(device),
+            torch.tensor(pastU, dtype=torch.float32).reshape(-1).T.to(device),
         )
         logY = []
         logU = []
@@ -431,25 +431,41 @@ if __name__ == "__main__":
                 y_kReal = YTrue[i]
                 u = np.reshape(U_Vn[i], (1, Option.inputSize))  # Ensure u is reshaped
 
-            pastU = np.reshape(
-                np.append(pastU, u)[Option.inputSize :],
-                (Option.inputSize * model.strideLen, 1),
-            )
-            pastY = np.reshape(
-                np.append(pastY, y_kReal)[Option.outputSize :],
-                (Option.outputSize * model.strideLen, 1),
-            )
+            pastU = torch.cat(
+                (
+                    pastU,
+                    torch.tensor(u, dtype=torch.float32).reshape(1, Option.inputSize),
+                ),
+                dim=0,
+            )[1:]
+            pastY = torch.cat(
+                (
+                    pastY,
+                    torch.tensor(y_kReal, dtype=torch.float32).reshape(
+                        1, Option.outputSize
+                    ),
+                ),
+                dim=0,
+            )[1:]
             if i < openLoopStartingPoint or (i % _reset == 0 and _reset > 0):
                 x0 = model.model.conv_encoder(
-                    torch.tensor(pastY, dtype=torch.float32).T.to(device),
-                    torch.tensor(pastU, dtype=torch.float32).T.to(device),
+                    torch.tensor(pastY, dtype=torch.float32).reshape(-1).T.to(device),
+                    torch.tensor(pastU, dtype=torch.float32).reshape(-1).T.to(device),
                 )
+                x0 = x0.unsqueeze(0)
                 print("*", end="")
             else:
+                _u = torch.tensor(u, dtype=torch.float32).reshape(1, Option.inputSize)
+                _x0 = torch.tensor(x0, dtype=torch.float32).reshape(1, Option.stateSize)
+                # print(_u.shape)
+                # print(_x0.shape)
                 x0 = model.model.bridge_network(
-                    torch.tensor(u, dtype=torch.float32).to(device),
-                    torch.tensor(x0, dtype=torch.float32).to(device),
+                    _u.to(device),
+                    _x0.to(device),
                 )[0]
+
+            # print(x0.shape)
+
             y1, y = model.model.output_decoder(x0)
             # print("y1")
             # print(y1[0].detach().numpy())
@@ -458,7 +474,7 @@ if __name__ == "__main__":
             # print("y_kReal")
             # print(y_kReal)
             if i >= openLoopStartingPoint:
-                logY += [(y[0]).detach().cpu().numpy()]
+                logY += [(y[0][-2]).detach().cpu().numpy()]
                 logYR += [y_kReal]
                 logU += [u]
             print(".", end="")
@@ -489,7 +505,7 @@ if __name__ == "__main__":
             )
             le = []
             lv = []
-            for i in range(Option.stateSize):
+            for i in range(Option.outputSize):
                 # Plot logY and logYR for the i-th component
                 (y,) = plt.plot(logY[:, i])
                 (yr,) = plt.plot(logYR[:, i])
@@ -532,6 +548,7 @@ if __name__ == "__main__":
     u = [U_Vn[0]]
 
     if Option.closedLoopSim and Option.affineStruct:
+        print("Closed Loop")
         NUM_ITERATIONS = 400
         REF_AMPLITUDE = 0.7
         REF_PERIOD = 20
