@@ -14,6 +14,7 @@ from DynamicalSystem import LinearSystem
 from TwoTanks import TwoTanks
 from DummyModel import DummyModel
 from multiprocessing import Process, freeze_support
+from SpacecraftCW import SpacecraftNonlinear
 
 # Set random seeds for reproducibility
 np.random.seed(1)
@@ -84,6 +85,12 @@ class SystemSelectorEnum:
         u, y, u_val, y_val = dynamic_model.prepareDataset(10000, 1000)
         return dynamic_model, u, y, u_val, y_val
 
+    def SpacecraftNonlinearModel(self, non_linear_input_char=False):
+        print("SpacecraftNonlinear")
+        dynamic_model = SpacecraftNonlinear()
+        u, y, u_val, y_val = dynamic_model.prepareDataset(20000, 1000)
+        return dynamic_model, u, y, u_val, y_val
+
 
 class Options:
     def __init__(self):
@@ -106,6 +113,8 @@ class Options:
         self.closedLoopSim = True
         self.enablePlot = True
         self.stateSize = 6
+        self.inputSize = 1
+        self.outputSize = 1
         self.outputWindowLen = 2
         self.n_layers = 3
         self.n_neurons = 30
@@ -142,6 +151,15 @@ if __name__ == "__main__":
         elif int(sys.argv[3]) == 5:
             Option.dynamicalSystemSelector = SystemSelectorEnum.SILVERBOX_dataset
             Option.closedLoopSim = False
+        elif int(sys.argv[3]) == 6:
+            Option.dynamicalSystemSelector = (
+                SystemSelectorEnum().SpacecraftNonlinearModel
+            )
+            Option.n_layers = 3
+            Option.n_neurons = 30
+            Option.closedLoopSim = True
+            Option.epochs = 300
+            Option.early_stopping_patience = 8
 
         Option.stringDynamicalSystemSelector = (
             str(Option.dynamicalSystemSelector)
@@ -208,8 +226,17 @@ if __name__ == "__main__":
 
     # %% DS generation and model learning
     simulatedSystem, U_n, Y_n, U_Vn, Y_Vn = Option.dynamicalSystemSelector()
-    if simulatedSystem is DummyModel:
+    if isinstance(simulatedSystem, DummyModel):
         simulatedSystem.stateSize = Option.stateSize
+    if isinstance(simulatedSystem, SpacecraftNonlinear):
+        Option.stateSize = simulatedSystem.stateSize
+        Option.inputSize = simulatedSystem.inputSize
+        Option.outputSize = simulatedSystem.outputSize
+        Option.n_layers = 3
+        Option.n_neurons = 30
+        Option.closedLoopSim = True
+        Option.epochs = 300
+        Option.early_stopping_patience = 10
 
     model = AdvAutoencoder(
         affineStruct=Option.affineStruct,
@@ -222,6 +249,8 @@ if __name__ == "__main__":
         n_neurons=Option.n_neurons,
         regularizerWeight=Option.regularizerWeight,
         stateSize=Option.stateSize,
+        inputSize=Option.inputSize,
+        outputSize=Option.outputSize,
         batch_size=Option.batch_size,
         modelSelector=Option.modelSelector,
     )
@@ -233,18 +262,17 @@ if __name__ == "__main__":
         early_stopping_patience=Option.early_stopping_patience,
         min_delta=Option.min_delta,
     )
-    """
     # If you want load a previous model without training
-    model.model, _, _, _ = model.ANNModel()
-    model.model.load_state_dict(
-        torch.load(
-            "dumps/model_{0}_{1}.mat".format(
-                Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
-            ),
-            weights_only=True,
-        )
-    )
-    """
+    # model.model, _, _, _ = model.ANNModel()
+    # model.model.load_state_dict(
+    #     torch.load(
+    #         "dumps/model_{0}_{1}.mat".format(
+    #             Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
+    #         ),
+    #         map_location=torch.device("cpu"),
+    #         weights_only=False,
+    #     )
+    # )
     (
         predictedLeft,
         stateLeft,
@@ -260,7 +288,7 @@ if __name__ == "__main__":
         uSequence = np.array(uSequence)
 
         for u in uSequence:
-            u = np.reshape(u, (1, 1))
+            u = np.reshape(u, (1, Option.inputSize))
             x0 = model.model.bridge_network(
                 torch.tensor(u, dtype=torch.float32),
                 torch.tensor(x0, dtype=torch.float32),
@@ -279,10 +307,11 @@ if __name__ == "__main__":
         x0 = x0.detach().cpu().numpy()[:, 0]
         for u in uSequence:
             # u=np.reshape(u,(1,1))
+            u = np.squeeze(u)
             asda = np.concatenate(
                 [
                     x0,
-                    [u],
+                    u,
                 ]
             )
 
@@ -303,7 +332,7 @@ if __name__ == "__main__":
                 logC[i][1] = logC[i][1].detach().cpu().numpy()
 
             # Fixed: Proper reshaping to match original dimensions
-            asda = np.reshape(asda, (Option.stateSize + 1, 1))
+            asda = np.reshape(asda, (Option.stateSize + Option.inputSize, 1))
 
             # State update using logAB[i][1] (A matrix) and logAB[i][2] (bias)
             x0 = np.dot(logAB[i][1], asda)
@@ -371,8 +400,8 @@ if __name__ == "__main__":
         validationOnMultiHarmonic=True, _reset=-1, YTrue=None, U_Vn=None
     ):
         openLoopStartingPoint = Option.openLoopStartingPoint
-        pastY = np.zeros((model.strideLen, 1))
-        pastU = np.zeros((model.strideLen, 1))
+        pastY = np.zeros((Option.outputSize * model.strideLen, 1))
+        pastU = np.zeros((Option.inputSize * model.strideLen, 1))
         if YTrue is None:
             x0RealSystem = np.zeros((simulatedSystem.stateSize,))
 
@@ -387,18 +416,29 @@ if __name__ == "__main__":
         if not (YTrue is None):
             finalRange = YTrue.shape[0]
         for i in range(0, finalRange):
-            u = 0.5 * np.array([[np.sin(i / (20 + 0.01 * i))]]) + 0.5
+            # Default construction of u as a vector with shape (Option.inputSize, 1)
+            u_scalar = 0.5 * np.sin(i / (20 + 0.01 * i)) + 0.5
+            # Create a (Option.inputSize, 1) vector with the same value in all positions
+            u = np.full((1, Option.inputSize), u_scalar)
+
             if not validationOnMultiHarmonic:
-                u = [U_Vn[i]]
+                u = np.reshape(U_Vn[i], (1, Option.inputSize))  # Ensure u is reshaped
+
             if YTrue is None:
                 y_kReal, x0RealSystem_ = simulatedSystem.loop(x0RealSystem, u)
                 x0RealSystem = np.reshape(x0RealSystem_, (simulatedSystem.stateSize,))
             else:
                 y_kReal = YTrue[i]
-                u = [U_Vn[i]]
+                u = np.reshape(U_Vn[i], (1, Option.inputSize))  # Ensure u is reshaped
 
-            pastU = np.reshape(np.append(pastU, u)[1:], (model.strideLen, 1))
-            pastY = np.reshape(np.append(pastY, y_kReal)[1:], (model.strideLen, 1))
+            pastU = np.reshape(
+                np.append(pastU, u)[Option.inputSize :],
+                (Option.inputSize * model.strideLen, 1),
+            )
+            pastY = np.reshape(
+                np.append(pastY, y_kReal)[Option.outputSize :],
+                (Option.outputSize * model.strideLen, 1),
+            )
             if i < openLoopStartingPoint or (i % _reset == 0 and _reset > 0):
                 x0 = model.model.conv_encoder(
                     torch.tensor(pastY, dtype=torch.float32).T.to(device),
@@ -410,15 +450,24 @@ if __name__ == "__main__":
                     torch.tensor(u, dtype=torch.float32).to(device),
                     torch.tensor(x0, dtype=torch.float32).to(device),
                 )[0]
-            y = model.model.output_decoder(x0)[1]
+            y1, y = model.model.output_decoder(x0)
+            # print("y1")
+            # print(y1[0].detach().numpy())
+            # print("y2")
+            # print(y[0].detach().numpy())
+            # print("y_kReal")
+            # print(y_kReal)
             if i >= openLoopStartingPoint:
-                logY += [(y[0][-2]).detach().cpu().numpy()]
-                logYR += [y_kReal[0]]
-                logU += [u[0]]
+                logY += [(y[0]).detach().cpu().numpy()]
+                logYR += [y_kReal]
+                logU += [u]
             print(".", end="")
         print("\n")
         logY = np.array(logY)
         logYR = np.array(logYR)
+        # print("shapes")
+        # print(logY.shape)
+        # print(logYR.shape)
         # logYR = logYR.reshape(logYR.shape[0], 1)
         a = np.linalg.norm(np.array(logY) - np.array(logYR))
         b = np.linalg.norm(np.mean(np.array(logY)) - np.array(logYR))
@@ -438,12 +487,24 @@ if __name__ == "__main__":
                 + " fit="
                 + str(fit)
             )
-            (y,) = plt.plot(logY)
-            (yr,) = plt.plot(logYR)
-            (et,) = plt.plot(np.array(logY) - np.array(logYR))
+            le = []
+            lv = []
+            for i in range(Option.stateSize):
+                # Plot logY and logYR for the i-th component
+                (y,) = plt.plot(logY[:, i])
+                (yr,) = plt.plot(logYR[:, i])
+                (et,) = plt.plot(logY[:, i] - logYR[:, i])
+                le.append(y)
+                le.append(yr)
+                le.append(et)
+                lv.append("$\hat y_{i}$")
+                lv.append("$y_{i}$")
+                lv.append("$e_{i}$")
             plt.tight_layout()
-            plt.legend([y, yr, et], ["$\hat y$", "$y_{real}$", "estimation error"])
-            plt.savefig(f"open_loop_simulation.png")  # <-- Save to PNG file
+            plt.legend(le, lv)
+            plt.savefig(
+                f"open_loop_simulation_{validationOnMultiHarmonic}_{_reset}_{YTrue}.png"
+            )  # <-- Save to PNG file
         return fit, NRMSE, logY, logYR
 
     # %% Model Validation Validation
@@ -477,16 +538,16 @@ if __name__ == "__main__":
         REF_DECAY = 0.01
         logY, logU, logYR = [], [], []
         MPCHorizon = Option.horizon
-        pastY = np.zeros((model.strideLen, 1))
-        pastU = np.zeros((model.strideLen, 1))
+        pastY = np.zeros((Option.outputSize * model.strideLen, 1))
+        pastU = np.zeros((Option.inputSize * model.strideLen, 1))
         x0RealSystem = np.zeros((simulatedSystem.stateSize,))
         x0 = model.model.conv_encoder(
             torch.tensor(pastY, dtype=torch.float32).T.to(device),
             torch.tensor(pastU, dtype=torch.float32).T.to(device),
         )
-        bounds = [(-1.5, 1.5) for _ in range(MPCHorizon)]
-        pastRes = np.zeros((MPCHorizon,))
-        u = np.zeros((1, 1))
+        bounds = [(-1.5, 1.5) for _ in range(MPCHorizon * 1 * Option.inputSize)]
+        pastRes = np.zeros((MPCHorizon, 1, Option.inputSize))
+        u = np.zeros((1, Option.inputSize))
         start = time.time()
 
         for i in range(NUM_ITERATIONS):
@@ -505,58 +566,59 @@ if __name__ == "__main__":
                 logAB, logC = prepareMatrices(pastRes, x0)
 
                 def lambdaCostFunction(x):
-                    return costFunction(x, r, u[0, 0], logAB, logC, x0.T)
+                    x = x.reshape(MPCHorizon, 1, Option.inputSize)
+                    return costFunction(x, r, u, logAB, logC, x0.T)
 
                 result = optimize.minimize(
                     lambdaCostFunction,
-                    pastRes,
+                    pastRes.reshape(-1),
                     bounds=bounds,
                     method="SLSQP",
                 )
-                u = np.array(result.x[0]).reshape((1, 1))
-                pastRes = result.x
+                result = result.x.reshape(MPCHorizon, 1, Option.inputSize)
+                u = np.array(result[0]).reshape((1, Option.inputSize))
+                pastRes = result
 
             pastRes[:-1] = pastRes[1:]
             y_kReal, x0RealSystem = simulatedSystem.loop(x0RealSystem, u)
             x0RealSystem = x0RealSystem.copy()
-            pastU = np.roll(pastU, -1, axis=0)
-            pastU[-1, :] = u.T
-            pastY = np.roll(pastY, -1, axis=0)
-            pastY[-1, :] = y_kReal
-            logYR.append(y_kReal[0])
-            logU.append(u[0, 0])
+            pastU = np.roll(pastU, -Option.inputSize, axis=0)
+            pastU[-Option.inputSize :] = u.flatten().reshape(-1, 1)
+            pastY = np.roll(pastY, -Option.outputSize, axis=0)
+            pastY[-Option.outputSize :] = y_kReal.flatten().reshape(-1, 1)
+            logYR.append(y_kReal[0].flatten())
+            logU.append(u.flatten())
 
         end = time.time()
         print("\nElapsed time in MPC:", end - start)
 
+        logY = np.array(logY)
+        logYR = np.array(logYR)
+        logU = np.array(logU)
+
         if Option.enablePlot:
-            logY = np.array(
-                [
-                    np.squeeze(y).item() if hasattr(y, "item") else float(np.squeeze(y))
-                    for y in logY
-                ]
-            )
-            logYR = np.array(
-                [
-                    np.squeeze(y).item() if hasattr(y, "item") else float(np.squeeze(y))
-                    for y in logYR
-                ]
-            )
-            logU = np.array(
-                [
-                    np.squeeze(u).item() if hasattr(u, "item") else float(np.squeeze(u))
-                    for u in logU
-                ]
-            )
+            le = []
+            lv = []
             plt.figure()
             plt.title("Closed loop simulation")
-            (uP,) = plt.plot(logU)
-            plt.grid()
-            (yP,) = plt.plot(logYR)
-            (rP,) = plt.plot(logY)
             plt.tight_layout()
-            plt.legend([uP, yP, rP], ["$u_k$", "$y_k$", "$r_k$"])
-            plt.savefig("closed_loop_simulation.png")
+            plt.grid()
+
+            (rk,) = plt.plot(logY)
+            le.append(rk)
+            lv.append("$rk_{k}$")
+
+            for i in range(logYR.shape[1]):
+                (yk,) = plt.plot(logYR[:, i])
+                le.append(yk)
+                lv.append("$yk_{i}$")
+                plt.legend(le, lv)
+
+            for i in range(logU.shape[1]):
+                (uk,) = plt.plot(logU[:, i])
+                le.append(uk)
+                lv.append("$uk_{i}$")
+                plt.savefig("closed_loop_simulation.png")
     # print(fit)
     # %% Feature Importance
     if Option.useGroupLasso:

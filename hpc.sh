@@ -3,6 +3,9 @@
 #submit_and_wait --partition=gprod_gssi -N 1 --ntasks-per-node=3 --gres=gpu:a100:8 hpc_cluster_run.sh 
 # scontrol show job 42973
 
+# Get user jobs
+# squeue -u $USER
+
 # Initialize (optional - function handles empty LAST_JOB_ID)
 unset LAST_JOB_ID
 

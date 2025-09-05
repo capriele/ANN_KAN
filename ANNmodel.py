@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Tuple, Union
+
 
 class EncoderNetwork(nn.Module):
     """Encoder network for the classical ANN model."""
@@ -38,6 +39,16 @@ class EncoderNetwork(nn.Module):
         for _ in range(n_layer - 1):
             self.layers.append(nn.Linear(n_neurons, n_neurons))
         self.layers.append(nn.Linear(n_neurons, state_size))
+
+        # self._init_weights()
+
+    def _init_weights(self):
+        """Initialize all Linear layers with Xavier init."""
+        for layer in self.layers:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_normal_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.zeros_(layer.bias)
 
     def _get_activation(self, nonlinearity: str) -> nn.Module:
         """Return activation function based on input string."""
@@ -91,8 +102,17 @@ class DecoderNetwork(nn.Module):
         )
         self.final_layer = nn.Linear(n_neurons, out_dim)
 
+        # self._init_weights()
+
+    def _init_weights(self):
+        """Apply Xavier initialization to all layers."""
+        for layer in list(self.layers) + [self.final_layer]:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_normal_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.zeros_(layer.bias)
+
     def _get_activation(self, nonlinearity: str) -> nn.Module:
-        """Return activation function based on input string."""
         activations = {
             "relu": nn.ReLU(),
             "tanh": nn.Tanh(),
@@ -109,7 +129,9 @@ class DecoderNetwork(nn.Module):
         x = self.final_layer(x)
         if self.affine_struct:
             x = x.view(-1, self.output_window_len, self.state_size)
-            out = torch.sum(x * inputs_state.unsqueeze(1), dim=-1)
+            # out = torch.sum(x * inputs_state.unsqueeze(1), dim=1)
+            out = torch.sum(x * inputs_state.unsqueeze(1), dim=1)
+            # out = torch.mul(x, inputs_state.unsqueeze(1))
             return x, out
         return x, x
 
@@ -142,6 +164,19 @@ class BridgeNetwork(nn.Module):
         self.bridge_bias = nn.Linear(n_neurons, state_size)
         if affine_struct:
             self.bridge_f = nn.Linear(n_neurons, state_size * (state_size + N_U))
+
+        # self._init_weights()
+
+    def _init_weights(self):
+        """Apply Xavier initialization to all layers."""
+        for layer in [self.bridge0, self.bridge_bias] + list(self.hidden_layers):
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_normal_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.zeros_(layer.bias)
+        if self.affine_struct:
+            nn.init.xavier_normal_(self.bridge_f.weight)
+            nn.init.zeros_(self.bridge_f.bias)
 
     def _get_activation(self, nonlinearity: str) -> callable:
         """Return activation function based on input string."""
@@ -198,6 +233,9 @@ class ANNModel(nn.Module):
         self.output_decoder = decoder_network
         self.bridge_network = bridge_network
 
+        if self.output_window_len <= 0:
+            self.output_window_len = 2
+
     def forward(
         self, inputs_y: torch.Tensor, inputs_u: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -215,18 +253,71 @@ class ANNModel(nn.Module):
         predicted_ok_collection, state_k_collection = [], []
         forwarded_state = None
 
+        total_length_y = inputs_y.shape[1]
+        total_length_u = inputs_u.shape[1]
         for k in range(self.max_range):
-            i_yk = inputs_y[:, k : self.stride_len + k]
-            i_uk = inputs_u[:, k : self.stride_len + k]
-            target_start = self.stride_len + k - self.output_window_len + 1
-            target_end = self.stride_len + k + 1
-            i_target_k = inputs_y[:, target_start:target_end]
-            novel_i_uk = inputs_u[:, self.stride_len + k : self.stride_len + k + 1]
+            # Slice the input sequences for y and u
+            start_y = (self.n_y * k) % total_length_y
+            end_y = (self.n_y * k + self.n_y * self.stride_len) % total_length_y
 
+            # Handle the case where the indices wrap around
+            if start_y < end_y:
+                i_yk = inputs_y[:, start_y:end_y]
+            else:
+                i_yk = torch.cat((inputs_y[:, start_y:], inputs_y[:, :end_y]), dim=1)
+
+            # Calculate the start and end indices for i_uk with modulo
+            start_u = (self.n_u * k) % total_length_u
+            end_u = (self.n_u * k + self.n_u * self.stride_len) % total_length_u
+
+            # Handle the case where the indices wrap around
+            if start_u < end_u:
+                i_uk = inputs_u[:, start_u:end_u]
+            else:
+                i_uk = torch.cat((inputs_u[:, start_u:], inputs_u[:, :end_u]), dim=1)
+
+            # Calculate target indices for y (output size is now n_u)
+            # target_start = (self.stride_len + k + 1) % inputs_y.shape[1]
+            # target_end = (
+            #     self.stride_len + k + 1 + self.n_y * self.output_window_len
+            # ) % inputs_y.shape[
+            #     1
+            # ]  # Output size is n_y
+            target_start = self.n_y * k % inputs_y.shape[1]
+            target_end = self.n_y * (k + 1) % inputs_y.shape[1]
+
+            # Handle wrap-around for i_target_k
+            if target_end < target_start:
+                i_target_k = torch.cat(
+                    (inputs_y[:, target_start:], inputs_y[:, :target_end]), dim=1
+                )
+            else:
+                i_target_k = inputs_y[:, target_start:target_end]
+
+            # Calculate novel input indices for u (input size is now n_u)
+            novel_start = (self.n_u * k) % inputs_u.shape[1]
+            novel_end = (self.n_u * (k + 1)) % inputs_u.shape[1]  # Input size is n_u
+
+            # Handle wrap-around for novel_i_uk
+            if novel_end < novel_start:
+                novel_i_uk = torch.cat(
+                    (inputs_u[:, novel_start:], inputs_u[:, :novel_end]), dim=1
+                )
+            else:
+                novel_i_uk = inputs_u[:, novel_start:novel_end]
+
+            # Encode and decode
+            # print(inputs_y.shape)
+            # print(inputs_u.shape)
+            # print(target_start, target_end)
+            # print(i_target_k.shape)
+            # print(novel_i_uk.shape)
             state_k = self.conv_encoder(i_yk, i_uk)
             predicted_ok = self.output_decoder(state_k)[1]
             predicted_ok_collection.append(predicted_ok)
             state_k_collection.append(state_k)
+            # print(predicted_ok.shape)
+            i_target_k = torch.reshape(i_target_k, predicted_ok.shape)
             prediction_error_collection.append(torch.abs(predicted_ok - i_target_k))
 
             if forwarded_state is not None:

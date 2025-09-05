@@ -62,6 +62,8 @@ class AdvAutoencoder(nn.Module):
         stateReduction=False,
         validation_split=0.05,
         stateSize=-1,
+        inputSize=1,
+        outputSize=1,
         strideLen=10,
         outputWindowLen=2,
         affineStruct=True,
@@ -74,6 +76,8 @@ class AdvAutoencoder(nn.Module):
         self.nonlinearity = nonlinearity
         self.outputWindowLen = outputWindowLen
         self.stateSize = stateSize
+        self.inputSize = inputSize
+        self.outputSize = outputSize
         self.n_neurons = n_neurons
         self.stateReduction = stateReduction
         self.validation_split = validation_split
@@ -127,8 +131,8 @@ class AdvAutoencoder(nn.Module):
         if self.modelSelector == 1:
             en = ann_kan.EncoderNetwork(
                 stride_len=self.strideLen,
-                n_u=self.N_U,
-                n_y=self.N_Y,
+                n_u=self.inputSize,
+                n_y=self.outputSize,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 state_size=self.stateSize,
@@ -137,8 +141,8 @@ class AdvAutoencoder(nn.Module):
         elif self.modelSelector == 2:
             en = ann_koopman.EncoderNetwork(
                 stride_len=self.strideLen,
-                n_u=self.N_U,
-                n_y=self.N_Y,
+                n_u=self.inputSize,
+                n_y=self.outputSize,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 state_size=self.stateSize,
@@ -153,8 +157,8 @@ class AdvAutoencoder(nn.Module):
         else:
             en = EncoderNetwork(
                 stride_len=self.strideLen,
-                n_u=self.N_U,
-                n_y=self.N_Y,
+                n_u=self.inputSize,
+                n_y=self.outputSize,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 state_size=self.stateSize,
@@ -176,7 +180,7 @@ class AdvAutoencoder(nn.Module):
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
                 output_window_len=self.outputWindowLen,
-                N_Y=self.N_Y,
+                N_Y=self.outputSize,
                 affine_struct=self.affineStruct,
             )
         elif self.modelSelector == 2:
@@ -186,7 +190,7 @@ class AdvAutoencoder(nn.Module):
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
                 output_window_len=self.outputWindowLen,
-                N_Y=self.N_Y,
+                N_Y=self.outputSize,
                 affine_struct=self.affineStruct,
             )
         else:
@@ -196,7 +200,7 @@ class AdvAutoencoder(nn.Module):
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
                 output_window_len=self.outputWindowLen,
-                N_Y=self.N_Y,
+                N_Y=self.outputSize,
                 affine_struct=self.affineStruct,
             )
         return dn
@@ -205,7 +209,7 @@ class AdvAutoencoder(nn.Module):
         if self.modelSelector == 1:
             bn = ann_kan.BridgeNetwork(
                 state_size=self.stateSize,
-                N_U=self.N_U,
+                N_U=self.inputSize,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
@@ -214,7 +218,7 @@ class AdvAutoencoder(nn.Module):
         elif self.modelSelector == 2:
             bn = ann_koopman.BridgeNetwork(
                 state_size=self.stateSize,
-                N_U=self.N_U,
+                N_U=self.inputSize,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
@@ -223,7 +227,7 @@ class AdvAutoencoder(nn.Module):
         else:
             bn = BridgeNetwork(
                 state_size=self.stateSize,
-                N_U=self.N_U,
+                N_U=self.inputSize,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
@@ -240,8 +244,8 @@ class AdvAutoencoder(nn.Module):
             ann = ann_kan.ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,
-                n_y=self.N_Y,
-                n_u=self.N_U,
+                n_y=self.outputSize,
+                n_u=self.inputSize,
                 output_window_len=self.outputWindowLen,
                 encoder_network=convEncoder,
                 decoder_network=outputEncoder,
@@ -251,8 +255,8 @@ class AdvAutoencoder(nn.Module):
             ann = ann_koopman.ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,
-                n_y=self.N_Y,
-                n_u=self.N_U,
+                n_y=self.outputSize,
+                n_u=self.inputSize,
                 output_window_len=self.outputWindowLen,
                 encoder_network=convEncoder,
                 decoder_network=outputEncoder,
@@ -262,8 +266,8 @@ class AdvAutoencoder(nn.Module):
             ann = ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,
-                n_y=self.N_Y,
-                n_u=self.N_U,
+                n_y=self.outputSize,
+                n_u=self.inputSize,
                 output_window_len=self.outputWindowLen,
                 encoder_network=convEncoder,
                 decoder_network=outputEncoder,
@@ -278,26 +282,82 @@ class AdvAutoencoder(nn.Module):
             U = self.U
         if Y is None:
             Y = self.Y
-        pad = self.MaxRange - 2
-        if int(pad) < 0:
-            pad = 0
-        _strideLen = self.strideLen + pad
-        print(_strideLen)
+
+        _strideLen = self.strideLen
         lenDS = U.shape[0]
-        inputVector = np.zeros((lenDS - 2, self.N_U * (_strideLen + 2)))
-        outputVector = np.zeros((lenDS - 2, self.N_Y * (_strideLen + 2)))
-        offset = self.strideLen + 1 + pad
 
-        for i in range(offset, lenDS):
-            regressor_StateInputs = np.ravel(U[i - _strideLen - 1 : i + 1])
-            regressor_StateOutputs = np.ravel(Y[i - _strideLen - 1 : i + 1])
-            inputVector[i - offset] = regressor_StateInputs.copy()
-            outputVector[i - offset] = regressor_StateOutputs.copy()
+        # Calculate the number of samples after padding and striding
+        num_samples = lenDS - (self.N_U + self.N_Y) * _strideLen
+        num_samples_u = (lenDS) // (_strideLen * self.N_U)
+        num_samples_y = (lenDS) // (_strideLen * self.N_Y)
+        num_samples = min(num_samples_u, num_samples_y)
 
-        return (
-            torch.tensor(inputVector[: i - offset + 1].copy()),
-            torch.tensor(outputVector[: i - offset + 1].copy()),
+        # Initialize input and output vectors with correct dimensions
+        inputVector = np.zeros((num_samples, self.N_U * _strideLen))
+        outputVector = np.zeros((num_samples, self.N_Y * _strideLen))
+        print(self.N_U, _strideLen, inputVector.shape)
+        print(self.N_Y, _strideLen, outputVector.shape)
+
+        j = 0
+        for i in range(0, lenDS, _strideLen * self.N_U):
+            # Extract input and output windows
+            input_window = U[
+                i : i + _strideLen * self.N_U, :
+            ]  # Shape: (_strideLen, N_U)
+            # print(i, inputVector.shape)
+            # print(input_window.shape)
+
+            if input_window.shape[0] == inputVector.shape[1]:
+                # Flatten the windows and store in the vectors
+                for k in range(self.N_U):
+                    inputVector[j] = input_window[:, k]
+                    j += 1
+                    if j >= num_samples:
+                        break
+
+            if j >= num_samples:
+                break
+
+        j = 0
+        for i in range(0, lenDS, _strideLen * self.N_Y):
+            # Extract input and output windows
+            output_window = Y[
+                i : i + _strideLen * self.N_Y, :
+            ]  # Shape: (_strideLen, N_Y)
+            # print(outputVector.shape)
+            # print(output_window.shape)
+
+            if output_window.shape[0] == outputVector.shape[1]:
+                # Flatten the windows and store in the vectors
+                for k in range(self.N_Y):
+                    outputVector[j] = output_window[:, k]
+                    j += 1
+                    if j >= num_samples:
+                        break
+
+            if j >= num_samples:
+                break
+
+        # Convert to PyTorch tensors
+        inputTensor = torch.tensor(inputVector, dtype=torch.float32)
+        outputTensor = torch.tensor(outputVector, dtype=torch.float32)
+        print(inputTensor.shape)
+        print(outputTensor.shape)
+        inputTensor = torch.tensor(
+            U.reshape(
+                int(self.U.shape[0] / self.strideLen),
+                int(self.U.shape[1] * self.strideLen),
+            ),
+            dtype=torch.float32,
         )
+        outputTensor = torch.tensor(
+            Y.reshape(
+                int(self.Y.shape[0] / self.strideLen),
+                int(self.Y.shape[1] * self.strideLen),
+            ),
+            dtype=torch.float32,
+        )
+        return inputTensor, outputTensor
 
     def trainModel(
         self,
@@ -309,7 +369,8 @@ class AdvAutoencoder(nn.Module):
         tmp = self.privateTrainModel(
             [
                 {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
+                {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
+                # {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
             ],
             shuffled,
             early_stopping_patience=early_stopping_patience,
@@ -436,11 +497,7 @@ class AdvAutoencoder(nn.Module):
             # Optimized DataLoaders
             train_dataset = TensorDataset(train_input_y, train_input_u, train_targets)
             val_dataset = TensorDataset(val_input_y, val_input_u, val_targets)
-            optimized_batch_size = (
-                self.batch_size
-                if device.type == "cuda"
-                else self._optimize_batch_size_for_cpu(self.batch_size)
-            )
+            optimized_batch_size = self.batch_size
 
             train_loader = DataLoader(
                 train_dataset,
@@ -502,12 +559,11 @@ class AdvAutoencoder(nn.Module):
                 kAEPrediction = coef["kAEPrediction"]
                 kForward = coef["kForward"]
                 patience_counter = 0
-                if loss_weights is None:
-                    loss_weights = {
-                        "multiStep_decodeError": kFPE,
-                        "oneStepDecoderError": kAEPrediction,
-                        "forwardError": kForward,
-                    }
+                loss_weights = {
+                    "multiStep_decodeError": kFPE,
+                    "oneStepDecoderError": kAEPrediction,
+                    "forwardError": kForward,
+                }
                 print(f"Loss weights: {loss_weights}")
                 print(f"Optimized batch size: {optimized_batch_size}")
 
@@ -787,13 +843,10 @@ class AdvAutoencoder(nn.Module):
         # Reset thread counts to system defaults if needed
         # torch.set_num_threads(0)  # Uncomment if you want to reset
 
-    def privateTrainModel1(
+    def privateTrainModelBatch(
         self,
+        coefficients,
         shuffled: bool = True,
-        tmp=None,
-        kFPE=0.0,
-        kAEPrediction=10,
-        kForward=0.3,
         checkpoint_path: Optional[str] = None,
         loss_weights: Optional[Dict[str, float]] = None,
         epochs: int = 150,
@@ -952,7 +1005,11 @@ class AdvAutoencoder(nn.Module):
             )
 
             # Default loss weights
-            if loss_weights is None:
+            for coef in coefficients:
+                kFPE = coef["kFPE"]
+                kAEPrediction = coef["kAEPrediction"]
+                kForward = coef["kForward"]
+                patience_counter = 0
                 loss_weights = {
                     "multiStep_decodeError": kFPE,
                     "oneStepDecoderError": kAEPrediction,
@@ -961,120 +1018,119 @@ class AdvAutoencoder(nn.Module):
                     # "functional_2": 1.0,
                 }
 
-            print(f"Loss weights: {loss_weights}")
+                print(f"Loss weights: {loss_weights}")
 
-            # Training setup
-            criterion = nn.MSELoss()
-            best_val_loss = float("inf")
-            patience_counter = 0
-            train_losses = []
-            val_losses = []
+                # Training setup
+                criterion = nn.MSELoss()
+                best_val_loss = float("inf")
+                train_losses = []
+                val_losses = []
 
-            print(f"Starting training for {epochs} epochs...")
+                print(f"Starting training for {epochs} epochs...")
 
-            # Training loop
-            for epoch in range(epochs):
-                start_time = time.time()
+                # Training loop
+                for epoch in range(epochs):
+                    start_time = time.time()
 
-                # === TRAINING PHASE ===
-                model.train()
-                train_loss = 0.0
-                num_batches = 0
+                    # === TRAINING PHASE ===
+                    model.train()
+                    train_loss = 0.0
+                    num_batches = 0
 
-                for batch_idx, (
-                    batch_input_y,
-                    batch_input_u,
-                    batch_targets,
-                ) in enumerate(train_loader):
-                    optimizer.zero_grad()
+                    for batch_idx, (
+                        batch_input_y,
+                        batch_input_u,
+                        batch_targets,
+                    ) in enumerate(train_loader):
+                        optimizer.zero_grad()
 
-                    # Forward pass
-                    outputs = model(batch_input_y, batch_input_u)
+                        # Forward pass
+                        outputs = model(batch_input_y, batch_input_u)
 
-                    # Compute loss
-                    output_dict = {
-                        "multiStep_decodeError": outputs[3],
-                        "oneStepDecoderError": outputs[2],
-                        "forwardError": outputs[4],
-                        # "functional_1": outputs[0],
-                        # "functional_2": outputs[1],
-                    }
-                    batch_loss, loss_components = self.calculate_weighted_loss(
-                        output_dict, loss_weights, criterion
-                    )
-
-                    # Backward pass
-                    batch_loss.backward()
-
-                    # Optional: gradient clipping
-                    # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
-
-                    # Update weights
-                    optimizer.step()
-
-                    # Apply model-specific constraints and regularization
-                    # model.output_decoder.apply_regularization()
-                    # model.output_decoder.apply_constraints()
-                    # model.bridge_network.apply_constraints()
-
-                    # Accumulate loss
-                    train_loss += batch_loss.item()
-                    num_batches += 1
-                    print(loss_components)
-
-                avg_train_loss = train_loss / max(num_batches, 1)
-                train_losses.append(avg_train_loss)
-
-                # === VALIDATION PHASE ===
-                model.eval()
-                with torch.no_grad():
-                    avg_val_loss = self._validate_model(
-                        model, val_loader, loss_weights, criterion
-                    )
-                    val_losses.append(avg_val_loss)
-
-                # === LOGGING ===
-                elapsed = time.time() - start_time
-                print(
-                    f"Epoch [{epoch + 1}/{epochs}] | "
-                    f"Train Loss: {avg_train_loss:.6f} | "
-                    f"Val Loss: {avg_val_loss:.6f} | "
-                    f"LR: {optimizer.param_groups[0]['lr']:.2e} | "
-                    f"Patience: {patience_counter} | "
-                    f"Time: {elapsed:.1f}s"
-                )
-
-                # === LEARNING RATE SCHEDULING ===
-                scheduler.step(avg_val_loss)
-
-                # === EARLY STOPPING & CHECKPOINTING ===
-                if avg_val_loss > best_val_loss:
-                    patience_counter = 0
-                else:
-                    if (best_val_loss - avg_val_loss) > min_delta:
-                        patience_counter = 0
-                    else:
-                        patience_counter += 1
-                    best_val_loss = avg_val_loss
-                    if save_best_model and checkpoint_dir:
-                        self._save_checkpoint(
-                            model,
-                            optimizer,
-                            scheduler,
-                            epoch,
-                            best_val_loss,
-                            checkpoint_dir / "best_model.pth",
+                        # Compute loss
+                        output_dict = {
+                            "multiStep_decodeError": outputs[3],
+                            "oneStepDecoderError": outputs[2],
+                            "forwardError": outputs[4],
+                            # "functional_1": outputs[0],
+                            # "functional_2": outputs[1],
+                        }
+                        batch_loss, loss_components = self.calculate_weighted_loss(
+                            output_dict, loss_weights, criterion
                         )
 
-                        # Store only best models
-                        self.model = model
-                        self.convEncoder = convEncoder
-                        self.outputEncoder = outputEncoder
-                        self.bridgeNetwork = bridgeNetwork
+                        # Backward pass
+                        batch_loss.backward()
 
-                if patience_counter >= early_stopping_patience:
-                    print(f"Early stopping triggered after {epoch + 1} epochs")
-                    break
+                        # Optional: gradient clipping
+                        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
+
+                        # Update weights
+                        optimizer.step()
+
+                        # Apply model-specific constraints and regularization
+                        # model.output_decoder.apply_regularization()
+                        # model.output_decoder.apply_constraints()
+                        # model.bridge_network.apply_constraints()
+
+                        # Accumulate loss
+                        train_loss += batch_loss.item()
+                        num_batches += 1
+                        print(loss_components)
+
+                    avg_train_loss = train_loss / max(num_batches, 1)
+                    train_losses.append(avg_train_loss)
+
+                    # === VALIDATION PHASE ===
+                    model.eval()
+                    with torch.no_grad():
+                        avg_val_loss = self._validate_model(
+                            model, val_loader, loss_weights, criterion
+                        )
+                        val_losses.append(avg_val_loss)
+
+                    # === LOGGING ===
+                    elapsed = time.time() - start_time
+                    print(
+                        f"Epoch [{epoch + 1}/{epochs}] | "
+                        f"Train Loss: {avg_train_loss:.6f} | "
+                        f"Val Loss: {avg_val_loss:.6f} | "
+                        f"LR: {optimizer.param_groups[0]['lr']:.2e} | "
+                        f"Patience: {patience_counter} | "
+                        f"Time: {elapsed:.1f}s"
+                    )
+
+                    # === LEARNING RATE SCHEDULING ===
+                    scheduler.step(avg_val_loss)
+
+                    # === EARLY STOPPING & CHECKPOINTING ===
+                    if avg_val_loss > best_val_loss:
+                        patience_counter = 0
+                    else:
+                        if (best_val_loss - avg_val_loss) > min_delta:
+                            patience_counter = 0
+                        else:
+                            patience_counter += 1
+                        best_val_loss = avg_val_loss
+                        if save_best_model and checkpoint_dir:
+                            self._save_checkpoint(
+                                model,
+                                optimizer,
+                                scheduler,
+                                epoch,
+                                best_val_loss,
+                                checkpoint_dir / "best_model.pth",
+                            )
+
+                            # Store only best models
+                            self.model = model
+                            self.convEncoder = convEncoder
+                            self.outputEncoder = outputEncoder
+                            self.bridgeNetwork = bridgeNetwork
+
+                    if patience_counter >= early_stopping_patience:
+                        print(f"Early stopping triggered after {epoch + 1} epochs")
+                        break
 
         except Exception as e:
             logging.error(f"Training failed with error: {e}")
