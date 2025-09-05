@@ -131,8 +131,8 @@ class AdvAutoencoder(nn.Module):
         if self.modelSelector == 1:
             en = ann_kan.EncoderNetwork(
                 stride_len=self.strideLen,
-                n_u=self.inputSize,
-                n_y=self.outputSize,
+                n_u=self.N_U,
+                n_y=self.N_Y,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 state_size=self.stateSize,
@@ -141,8 +141,8 @@ class AdvAutoencoder(nn.Module):
         elif self.modelSelector == 2:
             en = ann_koopman.EncoderNetwork(
                 stride_len=self.strideLen,
-                n_u=self.inputSize,
-                n_y=self.outputSize,
+                n_u=self.N_U,
+                n_y=self.N_Y,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 state_size=self.stateSize,
@@ -157,8 +157,8 @@ class AdvAutoencoder(nn.Module):
         else:
             en = EncoderNetwork(
                 stride_len=self.strideLen,
-                n_u=self.inputSize,
-                n_y=self.outputSize,
+                n_u=self.N_U,
+                n_y=self.N_Y,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 state_size=self.stateSize,
@@ -180,7 +180,7 @@ class AdvAutoencoder(nn.Module):
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
                 output_window_len=self.outputWindowLen,
-                N_Y=self.outputSize,
+                N_Y=self.N_Y,
                 affine_struct=self.affineStruct,
             )
         elif self.modelSelector == 2:
@@ -190,7 +190,7 @@ class AdvAutoencoder(nn.Module):
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
                 output_window_len=self.outputWindowLen,
-                N_Y=self.outputSize,
+                N_Y=self.N_Y,
                 affine_struct=self.affineStruct,
             )
         else:
@@ -200,7 +200,7 @@ class AdvAutoencoder(nn.Module):
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
                 output_window_len=self.outputWindowLen,
-                N_Y=self.outputSize,
+                N_Y=self.N_Y,
                 affine_struct=self.affineStruct,
             )
         return dn
@@ -209,7 +209,7 @@ class AdvAutoencoder(nn.Module):
         if self.modelSelector == 1:
             bn = ann_kan.BridgeNetwork(
                 state_size=self.stateSize,
-                N_U=self.inputSize,
+                N_U=self.N_U,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
@@ -218,7 +218,7 @@ class AdvAutoencoder(nn.Module):
         elif self.modelSelector == 2:
             bn = ann_koopman.BridgeNetwork(
                 state_size=self.stateSize,
-                N_U=self.inputSize,
+                N_U=self.N_U,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
@@ -227,7 +227,7 @@ class AdvAutoencoder(nn.Module):
         else:
             bn = BridgeNetwork(
                 state_size=self.stateSize,
-                N_U=self.inputSize,
+                N_U=self.N_U,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
@@ -244,8 +244,8 @@ class AdvAutoencoder(nn.Module):
             ann = ann_kan.ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,
-                n_y=self.outputSize,
-                n_u=self.inputSize,
+                n_y=self.N_Y,
+                n_u=self.N_U,
                 output_window_len=self.outputWindowLen,
                 encoder_network=convEncoder,
                 decoder_network=outputEncoder,
@@ -255,8 +255,8 @@ class AdvAutoencoder(nn.Module):
             ann = ann_koopman.ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,
-                n_y=self.outputSize,
-                n_u=self.inputSize,
+                n_y=self.N_Y,
+                n_u=self.N_U,
                 output_window_len=self.outputWindowLen,
                 encoder_network=convEncoder,
                 decoder_network=outputEncoder,
@@ -266,8 +266,8 @@ class AdvAutoencoder(nn.Module):
             ann = ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,
-                n_y=self.outputSize,
-                n_u=self.inputSize,
+                n_y=self.N_Y,
+                n_u=self.N_U,
                 output_window_len=self.outputWindowLen,
                 encoder_network=convEncoder,
                 decoder_network=outputEncoder,
@@ -282,33 +282,25 @@ class AdvAutoencoder(nn.Module):
             U = self.U
         if Y is None:
             Y = self.Y
-
         pad = self.MaxRange - 2
-        _strideLen = self.strideLen + self.MaxRange - 2
+        if int(pad) < 0:
+            pad = 0
+        _strideLen = self.strideLen + pad
+        print(_strideLen)
         lenDS = U.shape[0]
-
-        # Calculate the number of samples after padding and striding
-        num_samples = lenDS - 2
-
-        # Initialize input and output vectors with correct dimensions
-        inputVector = np.zeros((num_samples, _strideLen + 2, self.N_U))
-        outputVector = np.zeros((num_samples, _strideLen + 2, self.N_Y))
-        print(self.N_U, _strideLen, inputVector.shape, U.shape)
-        print(self.N_Y, _strideLen, outputVector.shape, Y.shape)
-
+        inputVector = np.zeros((lenDS - 2, _strideLen + 2, self.N_U))
+        outputVector = np.zeros((lenDS - 2, _strideLen + 2, self.N_Y))
         offset = self.strideLen + 1 + pad
+
         for i in range(offset, lenDS):
-            # Extract input and output windows
-            input_window = U[i - _strideLen - 1 : i + 1]
-            inputVector[i - offset] = input_window
-
-            output_window = Y[i - _strideLen - 1 : i + 1]
-            outputVector[i - offset] = output_window
-
-        # Convert to PyTorch tensors
-        inputTensor = torch.tensor(inputVector, dtype=torch.float32)
-        outputTensor = torch.tensor(outputVector, dtype=torch.float32)
-        return inputTensor, outputTensor
+            regressor_StateInputs = U[i - _strideLen - 1 : i + 1]
+            regressor_StateOutputs = Y[i - _strideLen - 1 : i + 1]
+            inputVector[i - offset] = regressor_StateInputs.copy()
+            outputVector[i - offset] = regressor_StateOutputs.copy()
+        return (
+            torch.tensor(inputVector[: i - offset + 1].copy()),
+            torch.tensor(outputVector[: i - offset + 1].copy()),
+        )
 
     def trainModel(
         self,
@@ -319,8 +311,9 @@ class AdvAutoencoder(nn.Module):
     ):
         tmp = self.privateTrainModel(
             [
-                {"kFPE": 0, "kAEPrediction": 10, "kForward": 3},
-                {"kFPE": 1, "kAEPrediction": 0, "kForward": 3},
+                {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
+                {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
+                # {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
             ],
             shuffled,
             early_stopping_patience=early_stopping_patience,

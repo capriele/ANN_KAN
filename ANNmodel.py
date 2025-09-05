@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, List, Union
 
 
 class EncoderNetwork(nn.Module):
@@ -39,16 +39,6 @@ class EncoderNetwork(nn.Module):
         for _ in range(n_layer - 1):
             self.layers.append(nn.Linear(n_neurons, n_neurons))
         self.layers.append(nn.Linear(n_neurons, state_size))
-
-        # self._init_weights()
-
-    def _init_weights(self):
-        """Initialize all Linear layers with Xavier init."""
-        for layer in self.layers:
-            if isinstance(layer, nn.Linear):
-                nn.init.xavier_normal_(layer.weight)
-                if layer.bias is not None:
-                    nn.init.zeros_(layer.bias)
 
     def _get_activation(self, nonlinearity: str) -> nn.Module:
         """Return activation function based on input string."""
@@ -105,17 +95,8 @@ class DecoderNetwork(nn.Module):
         )
         self.final_layer = nn.Linear(n_neurons, out_dim)
 
-        # self._init_weights()
-
-    def _init_weights(self):
-        """Apply Xavier initialization to all layers."""
-        for layer in list(self.layers) + [self.final_layer]:
-            if isinstance(layer, nn.Linear):
-                nn.init.xavier_normal_(layer.weight)
-                if layer.bias is not None:
-                    nn.init.zeros_(layer.bias)
-
     def _get_activation(self, nonlinearity: str) -> nn.Module:
+        """Return activation function based on input string."""
         activations = {
             "relu": nn.ReLU(),
             "tanh": nn.Tanh(),
@@ -131,15 +112,9 @@ class DecoderNetwork(nn.Module):
         for layer in self.layers:
             x = self.activation(layer(x))
         x = self.final_layer(x)
-        # print(inputs_state.shape)
         if self.affine_struct:
-            # print(x.shape)
             x = x.view(-1, self.output_window_len, self.N_Y, self.state_size)
-            # print(x.shape)
-            # print(inputs_state.unsqueeze(2).shape)
-            out = torch.einsum("abcd,acd->abc", x, inputs_state.unsqueeze(2))
-            # print(out.shape)
-            # print("---")
+            out = torch.sum(x * inputs_state.unsqueeze(1).unsqueeze(1), dim=2)
             return x, out
         return x, x
 
@@ -172,19 +147,6 @@ class BridgeNetwork(nn.Module):
         self.bridge_bias = nn.Linear(n_neurons, state_size)
         if affine_struct:
             self.bridge_f = nn.Linear(n_neurons, state_size * (state_size + N_U))
-
-        # self._init_weights()
-
-    def _init_weights(self):
-        """Apply Xavier initialization to all layers."""
-        for layer in [self.bridge0, self.bridge_bias] + list(self.hidden_layers):
-            if isinstance(layer, nn.Linear):
-                nn.init.xavier_normal_(layer.weight)
-                if layer.bias is not None:
-                    nn.init.zeros_(layer.bias)
-        if self.affine_struct:
-            nn.init.xavier_normal_(self.bridge_f.weight)
-            nn.init.zeros_(self.bridge_f.bias)
 
     def _get_activation(self, nonlinearity: str) -> callable:
         """Return activation function based on input string."""
@@ -242,9 +204,6 @@ class ANNModel(nn.Module):
         self.output_decoder = decoder_network
         self.bridge_network = bridge_network
 
-        if self.output_window_len <= 0:
-            self.output_window_len = 2
-
     def forward(
         self, inputs_y: torch.Tensor, inputs_u: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -271,7 +230,8 @@ class ANNModel(nn.Module):
             novel_i_uk = inputs_u[:, self.stride_len + k : self.stride_len + k + 1]
 
             state_k = self.conv_encoder(
-                i_yk.reshape(i_yk.shape[0], -1), i_uk.reshape(i_uk.shape[0], -1)
+                i_yk.reshape(i_yk.shape[0], self.stride_len * self.n_y),
+                i_uk.reshape(i_uk.shape[0], self.stride_len * self.n_u),
             )
             predicted_ok = self.output_decoder(state_k)[1]
             predicted_ok_collection.append(predicted_ok)
@@ -280,7 +240,9 @@ class ANNModel(nn.Module):
 
             if forwarded_state is not None:
                 forwarded_state_n = []
-                bridge_output = self.bridge_network(novel_i_uk.squeeze(1), state_k)[0]
+                bridge_output = self.bridge_network(
+                    novel_i_uk.reshape(novel_i_uk.shape[0], self.n_u), state_k
+                )[0]
                 forwarded_state_n.append(bridge_output)
                 for this_f in forwarded_state:
                     forward_error_collection.append(torch.abs(state_k - this_f))
@@ -289,13 +251,14 @@ class ANNModel(nn.Module):
                         forwarded_predicted_output_k - i_target_k
                     )
                     bridge_output_f = self.bridge_network(
-                        novel_i_uk.squeeze(1), this_f
+                        novel_i_uk.reshape(novel_i_uk.shape[0], self.n_u), this_f
                     )[0]
                     forwarded_state_n.append(bridge_output_f)
                 forwarded_state = forwarded_state_n
             else:
-                # print(novel_i_uk.shape, state_k.shape)
-                bridge_output = self.bridge_network(novel_i_uk.squeeze(1), state_k)[0]
+                bridge_output = self.bridge_network(
+                    novel_i_uk.reshape(novel_i_uk.shape[0], self.n_u), state_k
+                )[0]
                 forwarded_state = [bridge_output]
 
         one_step_ahead_prediction_error = torch.cat(prediction_error_collection, dim=1)

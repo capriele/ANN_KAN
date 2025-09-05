@@ -133,10 +133,12 @@ if __name__ == "__main__":
     print("Epochs", Option.epochs)
     print("Parameters", sys.argv)
     if len(sys.argv) > 2:
+        print(f"Option.fitHorizon = {int(sys.argv[2])}")
         Option.fitHorizon = int(sys.argv[2])
         print(int(sys.argv[2]))
 
     if len(sys.argv) > 3:
+        print(f"Option.dynamicalSystemSelector = {int(sys.argv[3])}")
         if int(sys.argv[3]) == 1:
             Option.dynamicalSystemSelector = SystemSelectorEnum().TWOTANKS
         elif int(sys.argv[3]) == 2:
@@ -155,11 +157,7 @@ if __name__ == "__main__":
             Option.dynamicalSystemSelector = (
                 SystemSelectorEnum().SpacecraftNonlinearModel
             )
-            Option.n_layers = 3
-            Option.n_neurons = 30
-            Option.closedLoopSim = True
-            Option.epochs = 300
-            Option.early_stopping_patience = 8
+            Option.closedLoopSim = False
 
         Option.stringDynamicalSystemSelector = (
             str(Option.dynamicalSystemSelector)
@@ -169,6 +167,7 @@ if __name__ == "__main__":
         print(int(sys.argv[3]))
 
     if len(sys.argv) > 4:
+        print(f"Option.nonLinearInputChar = {int(sys.argv[4])}")
         if int(sys.argv[4]) == 1:
             Option.nonLinearInputChar = True
         else:
@@ -176,14 +175,17 @@ if __name__ == "__main__":
         print(int(sys.argv[4]))
 
     if len(sys.argv) > 5:
+        print(f"Option.stateSize = {int(sys.argv[5])}")
         Option.stateSize = int(sys.argv[5])
         print(int(sys.argv[5]))
 
     if len(sys.argv) > 6:
+        print(f"Option.n_a = {int(sys.argv[6])}")
         Option.n_a = int(sys.argv[6])
         print(float(sys.argv[6]))
 
     if len(sys.argv) > 7:
+        print(f"Option.affineStruct = {int(sys.argv[7])}")
         if int(sys.argv[7]) == 1:
             Option.affineStruct = True
         else:
@@ -209,6 +211,7 @@ if __name__ == "__main__":
 
     # Check KAN mode flag
     if len(sys.argv) > 10:
+        print(f"Option.modelSelector = {int(sys.argv[10])}")
         if int(sys.argv[10]) == 1:
             print("Enable KAN model")
             Option.modelSelector = 1
@@ -232,11 +235,7 @@ if __name__ == "__main__":
         Option.stateSize = simulatedSystem.stateSize
         Option.inputSize = simulatedSystem.inputSize
         Option.outputSize = simulatedSystem.outputSize
-        Option.n_layers = 3
-        Option.n_neurons = 30
-        Option.closedLoopSim = True
-        Option.epochs = 300
-        Option.early_stopping_patience = 10
+        Option.closedLoopSim = False
 
     model = AdvAutoencoder(
         affineStruct=Option.affineStruct,
@@ -295,6 +294,7 @@ if __name__ == "__main__":
 
         for u in uSequence:
             u = np.reshape(u, (1, Option.inputSize))
+            x0 = np.reshape(x0.detach().cpu().numpy(), (1, Option.stateSize))
             x0 = model.model.bridge_network(
                 torch.tensor(u, dtype=torch.float32),
                 torch.tensor(x0, dtype=torch.float32),
@@ -310,10 +310,10 @@ if __name__ == "__main__":
         uSequence = np.array(uSequence)
         um1 = np.array(um1)
         i = 0
-        x0 = x0.detach().cpu().numpy()[:, 0]
+        x0 = x0.detach().cpu().numpy()
         for u in uSequence:
-            # u=np.reshape(u,(1,1))
-            u = np.squeeze(u)
+            x0 = np.reshape(x0, (Option.stateSize))
+            u = np.reshape(u, (Option.inputSize))
             asda = np.concatenate(
                 [
                     x0,
@@ -406,14 +406,14 @@ if __name__ == "__main__":
         validationOnMultiHarmonic=True, _reset=-1, YTrue=None, U_Vn=None
     ):
         openLoopStartingPoint = Option.openLoopStartingPoint
-        pastY = torch.zeros((model.strideLen, Option.outputSize))
-        pastU = torch.zeros((model.strideLen, Option.inputSize))
+        pastY = torch.zeros((model.strideLen, Option.outputSize)).to(device)
+        pastU = torch.zeros((model.strideLen, Option.inputSize)).to(device)
         if YTrue is None:
             x0RealSystem = np.zeros((simulatedSystem.stateSize,))
 
         x0 = model.model.conv_encoder(
-            torch.tensor(pastY, dtype=torch.float32).reshape(-1).T.to(device),
-            torch.tensor(pastU, dtype=torch.float32).reshape(-1).T.to(device),
+            pastY.reshape(-1),
+            pastU.reshape(-1),
         )
         logY = []
         logU = []
@@ -439,17 +439,19 @@ if __name__ == "__main__":
 
             pastU = torch.cat(
                 (
-                    pastU,
-                    torch.tensor(u, dtype=torch.float32).reshape(1, Option.inputSize),
+                    pastU.to(device),
+                    torch.tensor(u, dtype=torch.float32)
+                    .reshape(1, Option.inputSize)
+                    .to(device),
                 ),
                 dim=0,
             )[1:]
             pastY = torch.cat(
                 (
-                    pastY,
-                    torch.tensor(y_kReal, dtype=torch.float32).reshape(
-                        1, Option.outputSize
-                    ),
+                    pastY.to(device),
+                    torch.tensor(y_kReal, dtype=torch.float32)
+                    .reshape(1, Option.outputSize)
+                    .to(device),
                 ),
                 dim=0,
             )[1:]
@@ -472,13 +474,7 @@ if __name__ == "__main__":
 
             # print(x0.shape)
 
-            y1, y = model.model.output_decoder(x0)
-            # print("y1")
-            # print(y1[0].detach().numpy())
-            # print("y2")
-            # print(y[0].detach().numpy())
-            # print("y_kReal")
-            # print(y_kReal)
+            y = model.model.output_decoder(x0)[1]
             if i >= openLoopStartingPoint:
                 logY += [(y[0][-2]).detach().cpu().numpy()]
                 logYR += [y_kReal]
@@ -487,9 +483,6 @@ if __name__ == "__main__":
         print("\n")
         logY = np.array(logY)
         logYR = np.array(logYR)
-        # print("shapes")
-        # print(logY.shape)
-        # print(logYR.shape)
         # logYR = logYR.reshape(logYR.shape[0], 1)
         a = np.linalg.norm(np.array(logY) - np.array(logYR))
         b = np.linalg.norm(np.mean(np.array(logY)) - np.array(logYR))
@@ -561,12 +554,12 @@ if __name__ == "__main__":
         REF_DECAY = 0.01
         logY, logU, logYR = [], [], []
         MPCHorizon = Option.horizon
-        pastY = np.zeros((Option.outputSize * model.strideLen, 1))
-        pastU = np.zeros((Option.inputSize * model.strideLen, 1))
+        pastY = torch.zeros((model.strideLen, Option.outputSize)).to(device)
+        pastU = torch.zeros((model.strideLen, Option.inputSize)).to(device)
         x0RealSystem = np.zeros((simulatedSystem.stateSize,))
         x0 = model.model.conv_encoder(
-            torch.tensor(pastY, dtype=torch.float32).T.to(device),
-            torch.tensor(pastU, dtype=torch.float32).T.to(device),
+            pastY.reshape(-1),
+            pastU.reshape(-1),
         )
         bounds = [(-1.5, 1.5) for _ in range(MPCHorizon * 1 * Option.inputSize)]
         pastRes = np.zeros((MPCHorizon, 1, Option.inputSize))
@@ -575,8 +568,8 @@ if __name__ == "__main__":
 
         for i in range(NUM_ITERATIONS):
             x0 = model.model.conv_encoder(
-                torch.tensor(pastY, dtype=torch.float32).T.to(device),
-                torch.tensor(pastU, dtype=torch.float32).T.to(device),
+                pastY.reshape(-1),
+                pastU.reshape(-1),
             )
             r = [
                 REF_AMPLITUDE * np.array([[np.sin(j / (REF_PERIOD + REF_DECAY * j))]])
@@ -605,11 +598,25 @@ if __name__ == "__main__":
             pastRes[:-1] = pastRes[1:]
             y_kReal, x0RealSystem = simulatedSystem.loop(x0RealSystem, u)
             x0RealSystem = x0RealSystem.copy()
-            pastU = np.roll(pastU, -Option.inputSize, axis=0)
-            pastU[-Option.inputSize :] = u.flatten().reshape(-1, 1)
-            pastY = np.roll(pastY, -Option.outputSize, axis=0)
-            pastY[-Option.outputSize :] = y_kReal.flatten().reshape(-1, 1)
-            logYR.append(y_kReal[0].flatten())
+            pastU = torch.cat(
+                (
+                    pastU.to(device),
+                    torch.tensor(u, dtype=torch.float32)
+                    .reshape(1, Option.inputSize)
+                    .to(device),
+                ),
+                dim=0,
+            )[1:]
+            pastY = torch.cat(
+                (
+                    pastY.to(device),
+                    torch.tensor(y_kReal, dtype=torch.float32)
+                    .reshape(1, Option.outputSize)
+                    .to(device),
+                ),
+                dim=0,
+            )[1:]
+            logYR.append(y_kReal.flatten())
             logU.append(u.flatten())
 
         end = time.time()
@@ -627,21 +634,21 @@ if __name__ == "__main__":
             plt.tight_layout()
             plt.grid()
 
-            (rk,) = plt.plot(logY)
-            le.append(rk)
-            lv.append("$rk_{k}$")
+            for i in range(logU.shape[1]):
+                (uk,) = plt.plot(logU[:, i])
+                le.append(uk)
+                lv.append("$u_{k}$")
 
             for i in range(logYR.shape[1]):
                 (yk,) = plt.plot(logYR[:, i])
                 le.append(yk)
-                lv.append("$yk_{i}$")
-                plt.legend(le, lv)
+                lv.append("$y_{k}$")
 
-            for i in range(logU.shape[1]):
-                (uk,) = plt.plot(logU[:, i])
-                le.append(uk)
-                lv.append("$uk_{i}$")
-                plt.savefig("closed_loop_simulation.png")
+            (rk,) = plt.plot(logY)
+            le.append(rk)
+            lv.append("$r_{k}$")
+            plt.legend(le, lv)
+            plt.savefig("closed_loop_simulation.png")
     # print(fit)
     # %% Feature Importance
     if Option.useGroupLasso:
