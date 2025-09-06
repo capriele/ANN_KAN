@@ -109,7 +109,7 @@ class SpacecraftNonlinear:
     def systemDynamics(self, dim, flag=True):
         x_k = np.ones((self.stateSize, 1))
         y_n = np.zeros((dim, self.outputSize))
-        u_n = np.random.normal(1, 1.0, size=(dim, self.inputSize))
+        u_n = np.random.uniform(-5, 5.0, size=(dim, self.inputSize))
 
         for i in range(dim):
             if i % 10000 == 0:
