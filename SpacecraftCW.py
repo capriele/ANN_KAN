@@ -104,7 +104,7 @@ class SpacecraftNonlinear:
 
     def outputMap(self, xk, u):
         # Linear output: y_k = C x_k + D u_k
-        return (self.C @ xk) + (self.D @ u)
+        return self.C @ xk
 
     def systemDynamics(self, dim, flag=True):
         x_k = np.ones((self.stateSize, 1))
