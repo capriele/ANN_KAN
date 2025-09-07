@@ -58,70 +58,58 @@ arg10="${10:-0}"
 # Extract the last argument from the input string
 last_arg="$(echo "${2}" | grep -oE '[^ ]+$')"
 echo "LAST ARG: $last_arg"
+mkdir -p dumps
 if [ "$last_arg" = "1" ]; then
-    mkdir -p results_kan
-    filename="results_kan/${1}.txt"
+    mkdir -p results/kan/${1}
 elif [ "$last_arg" = "2" ]; then
-    mkdir -p results_koopman
-    filename="results_koopman/${1}.txt"
+    mkdir -p results/koopman/${1}
 else
-    mkdir -p results
-    filename="results/${1}.txt"
+    mkdir -p results/ann/${1}
 fi
 
-rm -f "$filename"
-touch "$filename"
-echo $filename
 for arg in "$@"; do
   echo "Arg $n: $arg"
   ((n++))
 done
 echo ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10}
 i=1
-python3 -W ignore main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10} | tee >(egrep "para|systemSelector|fit|NRMSE|f1|elapsed|evaluating|encoder|decoder|bridge" >> "$filename")
-if [ "$last_arg" = "1" ]; then
-    # Create target directory if it doesn't exist
-    mkdir -p "dumps/kan/"
+python3 -W ignore main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10}
+exp_name="$1"
 
-    # Move dump files if they exist
-    for file in dumps/dump*.mat; do
-        if [ -f "$file" ]; then
-            mv "$file" "dumps/kan/${1}_dump.mat"
-            break  # Move only the first match, or remove this line to move all
-        fi
-    done
+# Pick method based on last_arg
+case "$last_arg" in
+    1) method="kan" ;;
+    2) method="koopman" ;;
+    *) method="ann" ;;
+esac
 
-    # Move model files if they exist
-    for file in dumps/model*.mat; do
-        if [ -f "$file" ]; then
-            mv "$file" "dumps/kan/${1}_model.mat"
-            break  # Move only the first match, or remove this line to move all
-        fi
-    done
-    mv "closed_loop_simulation.png" "results_kan/${1}_closed_loop_simulation.png"
-    mv "open_loop_simulation.png" "results_kan/${1}_open_loop_simulation.png"
-elif [ "$last_arg" = "2" ]; then
-    # Create target directory if it doesn't exist
-    mkdir -p "dumps/koopman/"
+base_dir="results/${method}/${exp_name}"
 
-    # Move dump files if they exist
-    for file in dumps/dump*.mat; do
-        if [ -f "$file" ]; then
-            mv "$file" "dumps/koopman/${1}_dump.mat"
-            break  # Move only the first match, or remove this line to move all
-        fi
-    done
+# Ensure target dirs exist
+mkdir -p "${base_dir}/open_loop" "${base_dir}/closed_loop" "dumps/${method}"
 
-    # Move model files if they exist
-    for file in dumps/model*.mat; do
-        if [ -f "$file" ]; then
-            mv "$file" "dumps/koopman/${1}_model.mat"
-            break  # Move only the first match, or remove this line to move all
-        fi
-    done
-    mv "closed_loop_simulation.png" "results_koopman/${1}_closed_loop_simulation.png"
-    mv "open_loop_simulation.png" "results_koopman/${1}_open_loop_simulation.png"
-else
-    mv "closed_loop_simulation.png" "results/${1}_closed_loop_simulation.png"
-    mv "open_loop_simulation.png" "results/${1}_open_loop_simulation.png"
-fi
+# ---- Move dump file ----
+for file in dumps/dump*.mat; do
+    if [ -f "$file" ]; then
+        mv "$file" "${base_dir}/dump.mat"
+        break  # remove this line if you want to move *all* dumps
+    fi
+done
+
+# ---- Move open loop plots ----
+for file in ./open*.png; do
+    [ -f "$file" ] && mv "$file" "${base_dir}/open_loop/"
+done
+
+# ---- Move closed loop plots ----
+for file in ./closed*.png; do
+    [ -f "$file" ] && mv "$file" "${base_dir}/closed_loop/"
+done
+
+# ---- Move slurm outputs (for all methods) ----
+for file in ./slurm-*.err; do
+    [ -f "$file" ] && mv "$file" "${base_dir}/job.err"
+done
+for file in ./slurm-*.out; do
+    [ -f "$file" ] && mv "$file" "${base_dir}/job.out"
+done

@@ -136,9 +136,7 @@ class SpacecraftNonlinear:
         x_k = np.reshape(np.array(x_k), (self.stateSize, 1))
         for i in range(len(du_k)):
             u = np.reshape(np.array(du_k[i]), (self.inputSize, 1))
-            u = np.multiply(u, self.stdU.reshape(-1, 1)) + self.meanU.reshape(-1, 1)
             y = self.outputMap(x_k, u)
-            y = (y - self.meanY.reshape(-1, 1)) / self.stdY.reshape(-1, 1)
             y_n.append(y)
             x_k = self.stateMap(x_k, u)
 
@@ -147,16 +145,6 @@ class SpacecraftNonlinear:
     def prepareDataset(self, sizeT, sizeV):
         y_n, u_n = self.systemDynamics(sizeT, True)
         y_Vn, u_Vn = self.systemDynamics(sizeV, True)
-
-        self.meanY = np.mean(y_n, axis=0)
-        self.meanU = np.mean(u_n, axis=0)
-        self.stdY = np.std(y_n, axis=0)
-        self.stdU = np.std(u_n, axis=0)
-
-        y_n = (y_n - self.meanY) / self.stdY
-        y_Vn = (y_Vn - self.meanY) / self.stdY
-        u_n = (u_n - self.meanU) / self.stdU
-        u_Vn = (u_Vn - self.meanU) / self.stdU
 
         return (
             u_n.reshape((sizeT, self.inputSize)),

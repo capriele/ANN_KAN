@@ -41,8 +41,12 @@ class EncoderNetwork(nn.Module):
             k=spline_order,
             noise_scale=noise_scale,
             seed=seed,
+            auto_save=False,
         )
         self.kan_network.speed(compile=True)
+
+    def prune(self, threshold: float = 1e-2) -> None:
+        self.kan_network.prune()
 
     def forward(self, inputs_y: torch.Tensor, inputs_u: torch.Tensor) -> torch.Tensor:
         device = next(self.parameters()).device
@@ -79,7 +83,9 @@ class DecoderNetwork(nn.Module):
         self.affine_struct = affine_struct
         width = [state_size] + [n_neurons] * (n_layer - 1) + [n_neurons]
         out_dim = (
-            output_window_len * state_size if affine_struct else output_window_len * N_Y
+            output_window_len * state_size * N_Y
+            if affine_struct
+            else output_window_len * N_Y
         )
         width.append(out_dim)
         self.kan_network = KAN(
@@ -88,15 +94,19 @@ class DecoderNetwork(nn.Module):
             k=spline_order,
             noise_scale=noise_scale,
             seed=seed,
+            auto_save=False,
         )
         self.kan_network.speed(compile=True)
+
+    def prune(self, threshold: float = 1e-2) -> None:
+        self.kan_network.prune()
 
     def forward(self, inputs_state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         device = next(self.parameters()).device
         x = self.kan_network(inputs_state.to(device))
         if self.affine_struct:
-            x = x.view(-1, self.output_window_len, self.state_size)
-            out = torch.sum(x * inputs_state.unsqueeze(1), dim=-1)
+            x = x.view(-1, self.output_window_len, self.N_Y, self.state_size)
+            out = torch.sum(x * inputs_state.unsqueeze(1).unsqueeze(1), dim=-1)
             return x, out
         return x, x
 
@@ -125,13 +135,14 @@ class BridgeNetwork(nn.Module):
         self.n_layer = n_layer
         self.affine_struct = affine_struct
         input_dim = state_size + N_U
-        width = [input_dim] + [n_neurons] * (n_layer - 1) + [n_neurons]
+        width = [input_dim] + [n_neurons] * (n_layer - 1)
         self.kan_network = KAN(
             width=width,
             grid=grid_size,
             k=spline_order,
             noise_scale=noise_scale,
             seed=seed,
+            auto_save=False,
         )
         self.kan_network.speed(compile=True)
         self.bridge_bias = nn.Linear(n_neurons, state_size)
@@ -153,14 +164,12 @@ class BridgeNetwork(nn.Module):
                 -1, self.state_size, self.state_size + self.N_U
             )
             input_concat_expanded = input_concat.unsqueeze(-1)
-            out = torch.bmm(AB, input_concat_expanded).squeeze(-1) + bias.view(
-                AB.shape[0], self.state_size
-            )
+            out = torch.bmm(AB, input_concat_expanded).squeeze(-1) + bias
             return out, AB, bias
         return bias, kan_output, bias
 
     def prune(self, threshold: float = 1e-2) -> None:
-        self.kan_network.prune(threshold=threshold)
+        self.kan_network.prune()
 
     def plot(self, **kwargs) -> None:
         self.kan_network.plot(**kwargs)
@@ -199,6 +208,11 @@ class ANNModel(nn.Module):
         self.output_decoder = decoder_network
         self.bridge_network = bridge_network
 
+    def prune(self, threshold: float = 1e-2) -> None:
+        self.conv_encoder.prune()
+        self.output_decoder.prune()
+        self.bridge_network.prune()
+
     def forward(
         self, inputs_y: torch.Tensor, inputs_u: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -223,7 +237,10 @@ class ANNModel(nn.Module):
             i_target_k = inputs_y[:, target_start:target_end]
             novel_i_uk = inputs_u[:, self.stride_len + k : self.stride_len + k + 1]
 
-            state_k = self.conv_encoder(i_yk, i_uk)
+            state_k = self.conv_encoder(
+                i_yk.reshape(i_yk.shape[0], self.stride_len * self.n_y),
+                i_uk.reshape(i_uk.shape[0], self.stride_len * self.n_u),
+            )
             predicted_ok = self.output_decoder(state_k)[1]
             predicted_ok_collection.append(predicted_ok)
             state_k_collection.append(state_k)
@@ -231,7 +248,9 @@ class ANNModel(nn.Module):
 
             if forwarded_state is not None:
                 forwarded_state_n = []
-                bridge_output = self.bridge_network(novel_i_uk, state_k)[0]
+                bridge_output = self.bridge_network(
+                    novel_i_uk.reshape(novel_i_uk.shape[0], self.n_u), state_k
+                )[0]
                 forwarded_state_n.append(bridge_output)
                 for this_f in forwarded_state:
                     forward_error_collection.append(torch.abs(state_k - this_f))
@@ -239,23 +258,27 @@ class ANNModel(nn.Module):
                     forwarded_predicted_error_collection.append(
                         forwarded_predicted_output_k - i_target_k
                     )
-                    bridge_output_f = self.bridge_network(novel_i_uk, this_f)[0]
+                    bridge_output_f = self.bridge_network(
+                        novel_i_uk.reshape(novel_i_uk.shape[0], self.n_u), this_f
+                    )[0]
                     forwarded_state_n.append(bridge_output_f)
                 forwarded_state = forwarded_state_n
             else:
-                bridge_output = self.bridge_network(novel_i_uk, state_k)[0]
+                bridge_output = self.bridge_network(
+                    novel_i_uk.reshape(novel_i_uk.shape[0], self.n_u), state_k
+                )[0]
                 forwarded_state = [bridge_output]
 
         one_step_ahead_prediction_error = torch.cat(prediction_error_collection, dim=1)
         forwarded_predicted_error = (
             torch.cat(forwarded_predicted_error_collection, dim=1)
             if forwarded_predicted_error_collection
-            else torch.zeros_like(one_step_ahead_prediction_error[:, :1])
+            else torch.zeros_like(one_step_ahead_prediction_error[:, :1]).to(device)
         )
         forward_error = (
             torch.cat(forward_error_collection, dim=1)
             if forward_error_collection
-            else torch.zeros_like(one_step_ahead_prediction_error[:, :1])
+            else torch.zeros_like(one_step_ahead_prediction_error[:, :1]).to(device)
         )
 
         return (

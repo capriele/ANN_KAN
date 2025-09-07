@@ -148,15 +148,15 @@ class BridgeNetwork(nn.Module):
         if affine_struct:
             self.bridge_f = nn.Linear(n_neurons, state_size * (state_size + N_U))
 
-    def _get_activation(self, nonlinearity: str) -> callable:
-        """Return activation function based on input string."""
+    def _get_activation(self, nonlinearity: str) -> nn.Module:
         activations = {
-            "relu": F.relu,
-            "tanh": torch.tanh,
-            "sigmoid": torch.sigmoid,
+            "relu": nn.ReLU(),
+            "tanh": nn.Tanh(),
+            "sigmoid": nn.Sigmoid(),
+            "leaky_relu": nn.LeakyReLU(),
             "linear": nn.Identity(),
         }
-        return activations.get(nonlinearity, F.relu)
+        return activations.get(nonlinearity, nn.ReLU())
 
     def forward(self, inputs_novelU: torch.Tensor, inputs_state: torch.Tensor) -> Union[
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
@@ -172,10 +172,7 @@ class BridgeNetwork(nn.Module):
         bias = self.bridge_bias(x)
         if self.affine_struct:
             AB = self.bridge_f(x).view(-1, self.state_size, self.state_size + self.N_U)
-            input_concat_expanded = input_concat.unsqueeze(-1)
-            out = torch.bmm(AB, input_concat_expanded).squeeze(-1) + bias.view(
-                AB.shape[0], self.state_size
-            )
+            out = torch.bmm(AB, input_concat.unsqueeze(-1)).squeeze(-1) + bias
             return out, AB, bias
         return bias, x, bias
 

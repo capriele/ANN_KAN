@@ -15,6 +15,7 @@ from TwoTanks import TwoTanks
 from DummyModel import DummyModel
 from multiprocessing import Process, freeze_support
 from SpacecraftCW import SpacecraftNonlinear
+from AUV import AUV
 
 # Set random seeds for reproducibility
 np.random.seed(1)
@@ -91,6 +92,12 @@ class SystemSelectorEnum:
         u, y, u_val, y_val = dynamic_model.prepareDataset(20000, 1000)
         return dynamic_model, u, y, u_val, y_val
 
+    def AUVNonlinearModel(self, non_linear_input_char=False):
+        print("AUV")
+        dynamic_model = AUV()
+        u, y, u_val, y_val = dynamic_model.prepareDataset(20000, 1000)
+        return dynamic_model, u, y, u_val, y_val
+
 
 class Options:
     def __init__(self):
@@ -121,7 +128,7 @@ class Options:
         self.epochs = 300
         self.batch_size = 24 * 2
         self.early_stopping_patience = 8
-        self.min_delta = 0.000001
+        self.min_delta = 0.0000001
         self.modelSelector = False
 
 
@@ -135,7 +142,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         print(f"Option.fitHorizon = {int(sys.argv[2])}")
         Option.fitHorizon = int(sys.argv[2])
-        print(int(sys.argv[2]))
 
     if len(sys.argv) > 3:
         print(f"Option.dynamicalSystemSelector = {int(sys.argv[3])}")
@@ -158,13 +164,15 @@ if __name__ == "__main__":
                 SystemSelectorEnum().SpacecraftNonlinearModel
             )
             Option.closedLoopSim = False
+        elif int(sys.argv[3]) == 7:
+            Option.dynamicalSystemSelector = SystemSelectorEnum().AUVNonlinearModel
+            Option.closedLoopSim = False
 
         Option.stringDynamicalSystemSelector = (
             str(Option.dynamicalSystemSelector)
             .replace("<bound method SystemSelectorEnum.", "")
             .split(" of ")[0]
         )
-        print(int(sys.argv[3]))
 
     if len(sys.argv) > 4:
         print(f"Option.nonLinearInputChar = {int(sys.argv[4])}")
@@ -172,17 +180,14 @@ if __name__ == "__main__":
             Option.nonLinearInputChar = True
         else:
             Option.nonLinearInputChar = False
-        print(int(sys.argv[4]))
 
     if len(sys.argv) > 5:
         print(f"Option.stateSize = {int(sys.argv[5])}")
         Option.stateSize = int(sys.argv[5])
-        print(int(sys.argv[5]))
 
     if len(sys.argv) > 6:
         print(f"Option.n_a = {int(sys.argv[6])}")
         Option.n_a = int(sys.argv[6])
-        print(float(sys.argv[6]))
 
     if len(sys.argv) > 7:
         print(f"Option.affineStruct = {int(sys.argv[7])}")
@@ -190,7 +195,6 @@ if __name__ == "__main__":
             Option.affineStruct = True
         else:
             Option.affineStruct = False
-        print(float(sys.argv[7]))
 
     if len(sys.argv) > 8:
         if int(sys.argv[8]) == 1:
@@ -231,7 +235,9 @@ if __name__ == "__main__":
     simulatedSystem, U_n, Y_n, U_Vn, Y_Vn = Option.dynamicalSystemSelector()
     if isinstance(simulatedSystem, DummyModel):
         simulatedSystem.stateSize = Option.stateSize
-    if isinstance(simulatedSystem, SpacecraftNonlinear):
+    if isinstance(simulatedSystem, SpacecraftNonlinear) or isinstance(
+        simulatedSystem, AUV
+    ):
         Option.stateSize = simulatedSystem.stateSize
         Option.inputSize = simulatedSystem.inputSize
         Option.outputSize = simulatedSystem.outputSize
@@ -495,31 +501,23 @@ if __name__ == "__main__":
         print("fit: ", fit)
         print("NRMSE: ", NRMSE)
         if Option.enablePlot:
-            plt.figure()
-            plt.title(
-                "open loop simulation from k="
-                + str(openLoopStartingPoint)
-                + " fit="
-                + str(fit)
-            )
-            le = []
-            lv = []
             for i in range(Option.outputSize):
+                plt.figure()
+                plt.title(
+                    f"Open loop simulation for component {i+1} (k={openLoopStartingPoint}, fit={fit})"
+                )
+
                 # Plot logY and logYR for the i-th component
-                (y,) = plt.plot(logY[:, i])
-                (yr,) = plt.plot(logYR[:, i])
-                (et,) = plt.plot(logY[:, i] - logYR[:, i])
-                le.append(y)
-                le.append(yr)
-                le.append(et)
-                lv.append("$\hat y_{i}$")
-                lv.append("$y_{i}$")
-                lv.append("$e_{i}$")
-            plt.tight_layout()
-            plt.legend(le, lv)
-            plt.savefig(
-                f"open_loop_simulation_{validationOnMultiHarmonic}_{_reset}_{YTrue}.png"
-            )  # <-- Save to PNG file
+                (y,) = plt.plot(logY[:, i], label="$\hat{y}_{i}$")
+                (yr,) = plt.plot(logYR[:, i], label="$y_{i}$")
+                (et,) = plt.plot(logY[:, i] - logYR[:, i], label="$e_{i}$")
+
+                plt.legend()
+                plt.tight_layout()
+                plt.savefig(
+                    f"open_loop_simulation_component_{i+1}_{validationOnMultiHarmonic}_{_reset}_{YTrue}.png"
+                )
+                plt.close()  # Close the figure to free memory
         return fit, NRMSE, logY, logYR
 
     # %% Model Validation Validation
