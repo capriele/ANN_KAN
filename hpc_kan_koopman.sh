@@ -1,5 +1,14 @@
 #!/bin/bash
 
+rm *.err
+rm *.out
+
+user=$(whoami)
+for job in $(squeue -u "$user" -h -o "%A"); do
+    scancel "$job"
+    echo $job
+done
+
 ########################################################################
 ## The same tasks but with KAN (Encoder) + Koopman (Bridge & Decoder) ##
 ########################################################################
