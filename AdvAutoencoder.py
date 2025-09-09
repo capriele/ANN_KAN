@@ -299,6 +299,17 @@ class AdvAutoencoder(nn.Module):
                 decoder_network=outputEncoder,
                 bridge_network=bridgeNetwork,
             )
+        elif self.modelSelector == 3:
+            ann = ann_kan_koopman.ANNModel(
+                stride_len=self.strideLen,
+                max_range=self.MaxRange,
+                n_y=self.N_Y,
+                n_u=self.N_U,
+                output_window_len=self.outputWindowLen,
+                encoder_network=convEncoder,
+                decoder_network=outputEncoder,
+                bridge_network=bridgeNetwork,
+            )
         else:
             ann = ANNModel(
                 stride_len=self.strideLen,

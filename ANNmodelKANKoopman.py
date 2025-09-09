@@ -214,6 +214,7 @@ class ANNModel(nn.Module):
             predicted_ok = self.output_decoder(state_k)[1]
             predicted_ok_collection.append(predicted_ok)
             state_k_collection.append(state_k)
+            i_target_k = i_target_k.reshape(predicted_ok.shape)
             prediction_error_collection.append(torch.abs(predicted_ok - i_target_k))
 
             if forwarded_state is not None:

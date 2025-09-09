@@ -123,7 +123,7 @@ class Options:
         self.outputWindowLen = 2
         self.n_layers = 3
         self.n_neurons = 20
-        self.epochs = 60
+        self.epochs = 150
         self.batch_size = 24 * 2
         self.early_stopping_patience = 8
         self.min_delta = 0.0000001
@@ -419,8 +419,8 @@ if __name__ == "__main__":
             x0RealSystem = np.zeros((simulatedSystem.stateSize,))
 
         x0 = model.model.conv_encoder(
-            pastY.reshape(-1),
-            pastU.reshape(-1),
+            pastY.reshape(1, -1),
+            pastU.reshape(1, -1),
         )
         logY = []
         logU = []
@@ -464,8 +464,8 @@ if __name__ == "__main__":
             )[1:]
             if i < openLoopStartingPoint or (i % _reset == 0 and _reset > 0):
                 x0 = model.model.conv_encoder(
-                    torch.tensor(pastY, dtype=torch.float32).reshape(-1).T.to(device),
-                    torch.tensor(pastU, dtype=torch.float32).reshape(-1).T.to(device),
+                    torch.tensor(pastY, dtype=torch.float32).reshape(1, -1).to(device),
+                    torch.tensor(pastU, dtype=torch.float32).reshape(1, -1).to(device),
                 )
                 x0 = x0.unsqueeze(0)
                 print("*", end="")
@@ -557,8 +557,8 @@ if __name__ == "__main__":
         pastU = torch.zeros((model.strideLen, Option.inputSize)).to(device)
         x0RealSystem = np.zeros((simulatedSystem.stateSize,))
         x0 = model.model.conv_encoder(
-            pastY.reshape(-1),
-            pastU.reshape(-1),
+            pastY.reshape(1, -1),
+            pastU.reshape(1, -1),
         )
         bounds = [(-1.5, 1.5) for _ in range(MPCHorizon * 1 * Option.inputSize)]
         pastRes = np.zeros((MPCHorizon, 1, Option.inputSize))
@@ -567,8 +567,8 @@ if __name__ == "__main__":
 
         for i in range(NUM_ITERATIONS):
             x0 = model.model.conv_encoder(
-                pastY.reshape(-1),
-                pastU.reshape(-1),
+                pastY.reshape(1, -1),
+                pastU.reshape(1, -1),
             )
             r = [
                 REF_AMPLITUDE * np.array([[np.sin(j / (REF_PERIOD + REF_DECAY * j))]])
