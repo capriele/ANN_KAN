@@ -28,7 +28,9 @@ plt.rcParams["figure.dpi"] = 100
 plt.rcParams["font.size"] = 14
 plt.rcParams["text.usetex"] = False
 
+# torch.set_default_dtype(torch.float64)  # or torch.float16, torch.float64, etc.
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 
 # @unique
@@ -95,25 +97,20 @@ class SystemSelectorEnum:
     def AUVNonlinearModel(self, non_linear_input_char=False):
         print("AUV")
         dynamic_model = AUV()
-        u, y, u_val, y_val = dynamic_model.prepareDataset(20000, 1000)
+        u, y, u_val, y_val = dynamic_model.prepareDataset(25000, 1000)
         return dynamic_model, u, y, u_val, y_val
 
 
 class Options:
     def __init__(self):
         self.nonLinearInputChar = True
-        self.dynamicalSystemSelector = SystemSelectorEnum().TWOTANKS
-        self.stringDynamicalSystemSelector = (
-            str(self.dynamicalSystemSelector)
-            .replace("<function SystemSelectorEnum.", "")
-            .split(" at ")[0]
-        )
+        self.dynamicalSystemSelector = SystemSelectorEnum().AUVNonlinearModel
         self.affineStruct = True
         self.openLoopStartingPoint = 15
-        self.horizon = 5
+        self.horizon = 10
         self.TRsteps = 1
-        self.fitHorizon = 5
-        self.n_a = 10
+        self.fitHorizon = 7
+        self.n_a = 15
         self.useGroupLasso = False
         self.stateReduction = True
         self.regularizerWeight = 0.0001
@@ -124,8 +121,8 @@ class Options:
         self.outputSize = 1
         self.outputWindowLen = 2
         self.n_layers = 3
-        self.n_neurons = 30
-        self.epochs = 300
+        self.n_neurons = 20
+        self.epochs = 60
         self.batch_size = 24 * 2
         self.early_stopping_patience = 8
         self.min_delta = 0.0000001
@@ -167,12 +164,6 @@ if __name__ == "__main__":
         elif int(sys.argv[3]) == 7:
             Option.dynamicalSystemSelector = SystemSelectorEnum().AUVNonlinearModel
             Option.closedLoopSim = False
-
-        Option.stringDynamicalSystemSelector = (
-            str(Option.dynamicalSystemSelector)
-            .replace("<bound method SystemSelectorEnum.", "")
-            .split(" of ")[0]
-        )
 
     if len(sys.argv) > 4:
         print(f"Option.nonLinearInputChar = {int(sys.argv[4])}")
@@ -219,13 +210,9 @@ if __name__ == "__main__":
         if int(sys.argv[10]) == 1:
             print("Enable KAN model")
             Option.modelSelector = 1
-            Option.n_layers = 3
-            Option.n_neurons = 20
         elif int(sys.argv[10]) == 2:
             print("Enable Koopman model")
             Option.modelSelector = 2
-            Option.n_layers = 3
-            Option.n_neurons = 30
         else:
             Option.modelSelector = False
 
@@ -235,13 +222,10 @@ if __name__ == "__main__":
     simulatedSystem, U_n, Y_n, U_Vn, Y_Vn = Option.dynamicalSystemSelector()
     if isinstance(simulatedSystem, DummyModel):
         simulatedSystem.stateSize = Option.stateSize
-    if isinstance(simulatedSystem, SpacecraftNonlinear) or isinstance(
-        simulatedSystem, AUV
-    ):
-        Option.stateSize = simulatedSystem.stateSize
-        Option.inputSize = simulatedSystem.inputSize
-        Option.outputSize = simulatedSystem.outputSize
-        Option.closedLoopSim = False
+
+    Option.inputSize = simulatedSystem.inputSize
+    Option.outputSize = simulatedSystem.outputSize
+    Option.closedLoopSim = False
 
     model = AdvAutoencoder(
         affineStruct=Option.affineStruct,
@@ -262,10 +246,15 @@ if __name__ == "__main__":
     model.setDataset(U_n.copy(), Y_n.copy(), U_Vn.copy(), Y_Vn.copy())
 
     inputU, inputY = model.prepareDataset()
+    print(f"inputU shape: {inputU.shape}")
+    print(inputU)
+    print(f"inputY shape: {inputY.shape}")
+    print(inputY)
     model.trainModel(
         epochs=Option.epochs,
         early_stopping_patience=Option.early_stopping_patience,
         min_delta=Option.min_delta,
+        device=device,
     )
     torch.save(
         model.model.state_dict(),
@@ -282,7 +271,8 @@ if __name__ == "__main__":
     #         ),
     #         map_location=torch.device("cpu"),
     #         weights_only=False,
-    #     )
+    #     ),
+    #     strict=False,
     # )
     (
         predictedLeft,

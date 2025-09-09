@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from functools import partial
+import scipy.integrate
 
 
 class AUV:
     def __init__(self):
-        self.stateSize = 5
+        self.stateSize = 3
         self.inputSize = 4
-        self.outputSize = 5
+        self.outputSize = 3
         self.paraSize = 4
 
         # Initialize NumPy arrays for state-space matrices
@@ -19,9 +20,9 @@ class AUV:
 
     def innerDynamic(self, xT, uT, para, intgralTermRef=0):
         # Ensure inputs are NumPy arrays
-        xT = np.reshape(xT, (self.stateSize, 1))
+        xT = np.reshape(xT, (self.stateSize,))
         uT = np.reshape(uT, (self.inputSize,))
-        para = np.reshape(para, (self.paraSize,))
+        para = np.reshape(para, (self.paraSize,)) * 0 + 1
 
         m = 500.0
         Jz = 300.0
@@ -37,65 +38,66 @@ class AUV:
         l4x, l4y, alpha4 = 1.01, 0.353, 0.7853981633974483
         h1, h2, h3, h4 = para[0], para[1], para[2], para[3]
         pG = 38
+        def integrand(tempo, xT):
+            F1_y = np.cos(alpha1) * uT[0] * pG
+            F2_y = np.cos(alpha2) * uT[1] * pG
+            F3_y = np.cos(alpha3) * uT[2] * pG
+            F4_y = np.cos(alpha4) * uT[3] * pG
 
-        F1_y = np.cos(alpha1) * uT[0] * pG
-        F2_y = np.cos(alpha2) * uT[1] * pG
-        F3_y = np.cos(alpha3) * uT[2] * pG
-        F4_y = np.cos(alpha4) * uT[3] * pG
+            F1_x = np.sin(alpha1) * uT[0] * pG
+            F2_x = np.sin(alpha2) * uT[1] * pG
+            F3_x = np.sin(alpha3) * uT[2] * pG
+            F4_x = np.sin(alpha4) * uT[3] * pG
 
-        F1_x = np.sin(alpha1) * uT[0] * pG
-        F2_x = np.sin(alpha2) * uT[1] * pG
-        F3_x = np.sin(alpha3) * uT[2] * pG
-        F4_x = np.sin(alpha4) * uT[3] * pG
-
-        x1dot = (
-            1
-            / m
-            * (
-                -Xu * xT[0]
-                - Xuu * xT[0] ** 2
-                + m * xT[1] * xT[2]
-                + h1 * F1_x
-                + F2_x * h2
-                + F3_x * h3
-                + F4_x * h4
+            x1dot = (
+                1
+                / m
+                * (
+                    -Xu * xT[0]
+                    - Xuu * xT[0] ** 2
+                    + m * xT[1] * xT[2]
+                    + h1 * F1_x
+                    + F2_x * h2
+                    + F3_x * h3
+                    + F4_x * h4
+                )
             )
-        )
-        x2dot = (
-            1
-            / m
-            * (
-                -Yv * xT[1]
-                - Yvv * xT[1] ** 2
-                - m * xT[0] * xT[2]
-                + h1 * F1_y
-                + h2 * F2_y
-                + h3 * F3_y
-                + h4 * F4_y
+            x2dot = (
+                1
+                / m
+                * (
+                    -Yv * xT[1]
+                    - Yvv * xT[1] ** 2
+                    - m * xT[0] * xT[2]
+                    + h1 * F1_y
+                    + h2 * F2_y
+                    + h3 * F3_y
+                    + h4 * F4_y
+                )
             )
-        )
-        x3dot = (
-            1
-            / Jz
-            * (
-                -Nr * xT[2]
-                - Nrr * xT[2] ** 2
-                + h1 * (-F1_x * l1y + F1_y * l1x)
-                + h2 * (-F2_x * l2y + F2_y * l2x)
-                + h3 * (-F3_x * l3y + F3_y * l3x)
-                + h4 * (-F4_x * l4y + F4_y * l4x)
+            x3dot = (
+                1
+                / Jz
+                * (
+                    -Nr * xT[2]
+                    - Nrr * xT[2] ** 2
+                    + h1 * (-F1_x * l1y + F1_y * l1x)
+                    + h2 * (-F2_x * l2y + F2_y * l2x)
+                    + h3 * (-F3_x * l3y + F3_y * l3x)
+                    + h4 * (-F4_x * l4y + F4_y * l4x)
+                )
             )
-        )
-        x4dot = xT[2]
-        x5dot = xT[3] - np.asarray(intgralTermRef).ravel()[0]
+            # x4dot = xT[2]
+            return np.reshape(np.hstack((x1dot, x2dot, x3dot)), (self.stateSize,))
 
-        Ts = 0.01
-        xN = np.zeros((self.stateSize, 1))
-        xN[0] = xT[0] + Ts * x1dot
-        xN[1] = xT[1] + Ts * x2dot
-        xN[2] = xT[2] + Ts * x3dot
-        xN[3] = xT[3] + Ts * x4dot
-        xN[4] = xT[4] + Ts * x5dot
+        Ts = 0.1
+        # xN = np.zeros((self.stateSize, 1))
+        # xN[0] = xT[0] + Ts * x1dot
+        # xN[1] = xT[1] + Ts * x2dot
+        # xN[2] = xT[2] + Ts * x3dot
+        res = scipy.integrate.solve_ivp(integrand, [0, Ts], xT, method="BDF")
+        xN = res.y[:, -1]
+        # xN[3] = xT[3] + Ts * x4dot
 
         return xN.reshape((self.stateSize, 1))
 
@@ -107,22 +109,26 @@ class AUV:
         return self.innerDynamic(x, u, para).flatten()
 
     def outputMap(self, xk, u):
-        # Ensure inputs are NumPy arrays
-        xk = np.asarray(xk)
-        u = np.asarray(u)
-        return self.C @ xk
+        # Ensure inputs are NumPy array
+        return np.reshape(xk, (self.outputSize, 1))
 
     def systemDynamics(self, dim, flag=True):
         # Simulate system dynamics for `dim` steps
         x_k = np.ones((self.stateSize, 1))
         y_n = np.zeros((dim, self.outputSize))
-        u_n = np.random.normal(1, 1.0, size=(dim, self.inputSize))
+        u_n = np.random.uniform(-1, 1.0, size=(dim, self.inputSize))
         para = np.ones(self.paraSize)  # Placeholder
 
         for i in range(dim):
-            u = u_n[i : i + 1, :].T
-            x_k = self.stateMap(x_k, u, para)
+
+            if i % 10 == 0:
+                tt = np.random.uniform(-1, 1.0, size=(1, self.inputSize))
+            u_n[i] = tt * 1
+
+            u = np.reshape(u_n[i], (self.inputSize, 1))
             y_n[i] = self.outputMap(x_k, u).flatten()
+            x_k = self.stateMap(x_k, u, para)
+            assert not (np.any(np.isnan(x_k)))
 
         return y_n, u_n
 

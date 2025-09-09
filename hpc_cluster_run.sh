@@ -61,10 +61,13 @@ echo "LAST ARG: $last_arg"
 mkdir -p dumps
 if [ "$last_arg" = "1" ]; then
     mkdir -p results/kan/${1}
+    filename="results/kan/${1}/log.txt"
 elif [ "$last_arg" = "2" ]; then
     mkdir -p results/koopman/${1}
+    filename="results/koopman/${1}/log.txt"
 else
     mkdir -p results/ann/${1}
+    filename="results/ann/${1}/log.txt"
 fi
 
 for arg in "$@"; do
@@ -73,7 +76,7 @@ for arg in "$@"; do
 done
 echo ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10}
 i=1
-python3 -W ignore main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10}
+python -u main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10} | tee -a "$filename"
 exp_name="$1"
 
 # Pick method based on last_arg
@@ -107,9 +110,9 @@ for file in ./closed*.png; do
 done
 
 # ---- Move slurm outputs (for all methods) ----
-for file in ./slurm-*.err; do
-    [ -f "$file" ] && mv "$file" "${base_dir}/job.err"
-done
-for file in ./slurm-*.out; do
-    [ -f "$file" ] && mv "$file" "${base_dir}/job.out"
-done
+# for file in ./slurm-*.err; do
+#     [ -f "$file" ] && mv "$file" "${base_dir}/job.err"
+# done
+# for file in ./slurm-*.out; do
+#     [ -f "$file" ] && mv "$file" "${base_dir}/job.out"
+# done

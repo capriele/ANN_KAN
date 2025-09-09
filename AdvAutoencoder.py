@@ -235,8 +235,9 @@ class AdvAutoencoder(nn.Module):
             )
         return bn
 
-    def ANNModel(self):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    def ANNModel(self, device=None):
+        if device is None:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         bridgeNetwork = self.bridgeNetwork().to(device)
         convEncoder = self.encoderNetwork().to(device)
         outputEncoder = self.decoderNetwork().to(device)
@@ -308,17 +309,21 @@ class AdvAutoencoder(nn.Module):
         shuffled: bool = True,
         early_stopping_patience: int = 8,
         min_delta: float = 0.000001,
+        device=None,
     ):
+        print("trainModel")
+        # tmp = self.privateTrainModelBatch(
         tmp = self.privateTrainModel(
             [
                 {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                # {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
+                # {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
+                {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
             ],
             shuffled,
             early_stopping_patience=early_stopping_patience,
             min_delta=min_delta,
             epochs=epochs,
+            device=device,
         )
 
     def privateTrainModel(
@@ -334,6 +339,7 @@ class AdvAutoencoder(nn.Module):
         num_workers: Optional[int] = None,
         prefetch_factor: int = 4,
         use_mixed_precision: bool = False,
+        device=None,
     ) -> Dict[str, Any]:
         """
         Train the model with GPU/CPU support and optimizations.
@@ -353,7 +359,6 @@ class AdvAutoencoder(nn.Module):
         """
         try:
             # Device detection and selection
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             print(f"Using device: {device}")
 
             # Auto-detect optimal number of workers if not specified
@@ -388,7 +393,9 @@ class AdvAutoencoder(nn.Module):
                 checkpoint_dir = Path(checkpoint_path)
             else:
                 print("Initializing new model...")
-                self.model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel()
+                self.model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel(
+                    device=device
+                )
                 if checkpoint_path is None:
                     checkpoint_path = "checkpoints"
                 checkpoint_dir = Path(checkpoint_path)
@@ -483,7 +490,7 @@ class AdvAutoencoder(nn.Module):
                 patience=3,
                 threshold=min_delta,
                 threshold_mode="abs",
-                verbose=True,
+                # verbose=True,
                 min_lr=1e-6,
             )
 
@@ -529,7 +536,7 @@ class AdvAutoencoder(nn.Module):
                                 "forwardError": outputs[4],
                             }
                             batch_loss, loss_components = self.calculate_weighted_loss(
-                                output_dict, loss_weights, criterion
+                                self.model, output_dict, loss_weights, criterion
                             )
                         if use_mixed_precision and device.type == "cuda":
                             scaler.scale(batch_loss).backward()
@@ -549,7 +556,7 @@ class AdvAutoencoder(nn.Module):
                             "forwardError": outputs[4],
                         }
                         avg_train_loss, _ = self.calculate_weighted_loss(
-                            output_dict, loss_weights, criterion
+                            self.model, output_dict, loss_weights, criterion
                         )
                     train_losses.append(avg_train_loss.item())
 
@@ -667,8 +674,8 @@ class AdvAutoencoder(nn.Module):
             # Option 2: Try JIT scripting with inference optimization
             try:
                 # Create sample inputs with correct shapes
-                sample_y = torch.randn(sample_y_shape, dtype=torch.float32)
-                sample_u = torch.randn(sample_u_shape, dtype=torch.float32)
+                sample_y = torch.randn(sample_y_shape, dtype=torch.float64)
+                sample_u = torch.randn(sample_u_shape, dtype=torch.float64)
 
                 # Trace the model
                 model.eval()
@@ -751,7 +758,7 @@ class AdvAutoencoder(nn.Module):
 
             # Calculate loss
             batch_loss, _ = self.calculate_weighted_loss(
-                output_dict, loss_weights, criterion
+                model, output_dict, loss_weights, criterion
             )
 
             val_loss += batch_loss.item()
@@ -796,6 +803,7 @@ class AdvAutoencoder(nn.Module):
         early_stopping_patience: int = 8,
         min_delta: float = 0.00001,
         save_best_model: bool = True,
+        device=None,
     ) -> Dict[str, Any]:
         """
         Train the model with improved error handling, logging, and checkpointing.
@@ -820,7 +828,7 @@ class AdvAutoencoder(nn.Module):
             inputVector, outputVector = self.prepareDataset()
 
             # Device setup with better detection
-            if torch.cuda.is_available():
+            if device.type == "cuda":
                 device = torch.device("cuda")
                 print(f"Using GPU: {torch.cuda.get_device_name()}")
             # elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
@@ -893,7 +901,6 @@ class AdvAutoencoder(nn.Module):
                 patience=3,
                 threshold=min_delta,
                 threshold_mode="abs",
-                verbose=True,
                 min_lr=1e-6,
             )
 
@@ -999,7 +1006,7 @@ class AdvAutoencoder(nn.Module):
                             # "functional_2": outputs[1],
                         }
                         batch_loss, loss_components = self.calculate_weighted_loss(
-                            output_dict, loss_weights, criterion
+                            self.model, output_dict, loss_weights, criterion
                         )
 
                         # Backward pass
@@ -1019,7 +1026,7 @@ class AdvAutoencoder(nn.Module):
                         # Accumulate loss
                         train_loss += batch_loss.item()
                         num_batches += 1
-                        print(loss_components)
+                        # print(loss_components)
 
                     avg_train_loss = train_loss / max(num_batches, 1)
                     train_losses.append(avg_train_loss)
@@ -1099,9 +1106,10 @@ class AdvAutoencoder(nn.Module):
         return results
 
     @staticmethod
-    def calculate_weighted_loss(outputs, loss_weights, criterion):
+    def calculate_weighted_loss(model, outputs, loss_weights, criterion):
         """Calculate weighted loss from model outputs"""
         loss_components = []
+        # l2_reg = sum(p.pow(2).sum() for p in model.parameters())
         for output_name, weight in loss_weights.items():
             if output_name in outputs:
                 # Ensure targets have the right shape for this output
@@ -1110,11 +1118,8 @@ class AdvAutoencoder(nn.Module):
                 loss_component = criterion(output_tensor, adjusted_targets)
                 weighted_loss = weight * loss_component
                 loss_components.append(weighted_loss)
-        if loss_components:
-            # Use torch.stack and sum instead of in-place addition
-            total_loss = torch.stack(loss_components).sum()
-        else:
-            total_loss = torch.tensor(0.0, requires_grad=True)
+        # loss_components.append(l2_reg*0.001)
+        total_loss = torch.stack(loss_components).sum()
         return total_loss, loss_components
 
     def _validate_model(
@@ -1142,7 +1147,7 @@ class AdvAutoencoder(nn.Module):
                         "forwardError": outputs[4],
                     }
                     batch_loss, loss_components = self.calculate_weighted_loss(
-                        output_dict, loss_weights, criterion
+                        model, output_dict, loss_weights, criterion
                     )
                     val_loss += batch_loss.item()
                     num_batches += 1

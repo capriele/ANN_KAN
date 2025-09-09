@@ -42,6 +42,7 @@ class EncoderNetwork(nn.Module):
             noise_scale=noise_scale,
             seed=seed,
             auto_save=False,
+            symbolic_enabled=False,
         )
         self.kan_network.speed(compile=True)
 
@@ -95,6 +96,7 @@ class DecoderNetwork(nn.Module):
             noise_scale=noise_scale,
             seed=seed,
             auto_save=False,
+            symbolic_enabled=False,
         )
         self.kan_network.speed(compile=True)
 
@@ -143,6 +145,7 @@ class BridgeNetwork(nn.Module):
             noise_scale=noise_scale,
             seed=seed,
             auto_save=False,
+            symbolic_enabled=False,
         )
         self.kan_network.speed(compile=True)
         self.bridge_bias = nn.Linear(n_neurons, state_size)
