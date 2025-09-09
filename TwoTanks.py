@@ -12,7 +12,8 @@ class TwoTanks:
     def __init__(self,nonLinearInputChar=False):
         self.nonLinearInputChar=nonLinearInputChar
         self.stateSize=2
-        self.input_size=1        
+        self.inputSize = 1
+        self.outputSize = 1
         self.inputStateLinearity= True
         self.outputLinearity=  True
         self.exponent = 0.5
@@ -44,9 +45,9 @@ class TwoTanks:
         x_k=np.ones((self.stateSize,1))
 
         y_n=np.zeros((dim,1))
-        u_n=np.zeros((dim,self.input_size))
+        u_n = np.zeros((dim, self.inputSize))
         # u_n=0
-        noise=np.random.normal(1,1.0,size=(self.input_size,dim))        
+        noise = np.random.normal(1, 1.0, size=(self.inputSize, dim))
         if  flag:            
             print('a')
         else:
@@ -60,8 +61,8 @@ class TwoTanks:
             u[0]=noise[0][int(i/5)]
 
             y_n[i]=self.outputMap(x_k)*1
-            x_k=self.stateMap(x_k,np.reshape(u,(self.input_size,1)))*1
-            # u+=np.random.normal(0,0.05,size=(self.input_size))
+            x_k = self.stateMap(x_k, np.reshape(u, (self.inputSize, 1))) * 1
+            # u+=np.random.normal(0,0.05,size=(self.inputSize))
             u_n[i]=u
 
         return y_n,u_n

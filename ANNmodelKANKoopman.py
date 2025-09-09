@@ -2,10 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Optional, Tuple, List, Union
+from kan import KAN
 
 
 class EncoderNetwork(nn.Module):
-    """Encoder network for the classical ANN model."""
+    """Encoder network for the KAN-based ANN model."""
 
     def __init__(
         self,
@@ -16,12 +17,11 @@ class EncoderNetwork(nn.Module):
         n_layer: int,
         state_size: int,
         nonlinearity: str = "relu",
-        kernel_regularizer: Optional[str] = None,
-        constraint_on_input_hidden_layer: Optional[str] = None,
-        use_group_lasso: bool = False,
-        state_reduction: bool = False,
-        input_layer_regularizer: Optional[str] = None,
-        future: int = 0,
+        grid_size: int = 5,
+        spline_order: int = 3,
+        noise_scale: float = 0.1,
+        seed: int = 0,
+        **kwargs,
     ):
         super().__init__()
         self.stride_len = stride_len
@@ -30,35 +30,32 @@ class EncoderNetwork(nn.Module):
         self.n_neurons = n_neurons
         self.n_layer = n_layer
         self.state_size = state_size
-        self.future = future
-        self.activation = self._get_activation(nonlinearity)
-
         input_dim = (stride_len * n_u) + (stride_len * n_y)
-        self.layers = nn.ModuleList()
-        self.layers.append(nn.Linear(input_dim, n_neurons))
-        for _ in range(n_layer - 1):
-            self.layers.append(nn.Linear(n_neurons, n_neurons))
-        self.layers.append(nn.Linear(n_neurons, state_size))
+        width = (
+            [input_dim] + [n_neurons] * (n_layer - 1) + [state_size]
+            if n_layer > 1
+            else [input_dim, state_size]
+        )
+        self.kan_network = KAN(
+            width=width,
+            grid=grid_size,
+            k=spline_order,
+            noise_scale=noise_scale,
+            seed=seed,
+            auto_save=False,
+            symbolic_enabled=True,
+        )
+        self.kan_network.speed(compile=True)
 
-    def _get_activation(self, nonlinearity: str) -> nn.Module:
-        """Return activation function based on input string."""
-        activations = {
-            "relu": nn.ReLU(),
-            "tanh": nn.Tanh(),
-            "sigmoid": nn.Sigmoid(),
-            "leaky_relu": nn.LeakyReLU(),
-            "linear": nn.Identity(),
-        }
-        return activations.get(nonlinearity, nn.ReLU())
+    def prune(self, threshold: float = 1e-2) -> None:
+        self.kan_network.prune()
 
     def forward(self, inputs_y: torch.Tensor, inputs_u: torch.Tensor) -> torch.Tensor:
         device = next(self.parameters()).device
         x = torch.cat(
             [inputs_y.float().to(device), inputs_u.float().to(device)], dim=-1
         ).to(device)
-        for layer in self.layers[:-1]:
-            x = self.activation(layer(x))
-        return self.layers[-1](x)
+        return self.kan_network(x).squeeze()
 
 
 class DecoderNetwork(nn.Module):

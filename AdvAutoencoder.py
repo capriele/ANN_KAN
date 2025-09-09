@@ -14,6 +14,7 @@ from pathlib import Path
 from ANNmodel import *
 import ANNmodelKAN as ann_kan
 import ANNmodelKoopman as ann_koopman
+import ANNmodelKANKoopman as ann_kan_koopman
 import multiprocessing as mp
 import os
 import torch.multiprocessing as torch_mp
@@ -154,6 +155,22 @@ class AdvAutoencoder(nn.Module):
                 input_layer_regularizer=self.inputLayerRegularizer,
                 future=future,
             )
+        elif self.modelSelector == 3:
+            en = ann_kan_koopman.EncoderNetwork(
+                stride_len=self.strideLen,
+                n_u=self.N_U,
+                n_y=self.N_Y,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                state_size=self.stateSize,
+                nonlinearity=self.nonlinearity,
+                kernel_regularizer=self.kernel_regularizer,
+                constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
+                use_group_lasso=self.useGroupLasso,
+                state_reduction=self.stateReduction,
+                input_layer_regularizer=self.inputLayerRegularizer,
+                future=future,
+            )
         else:
             en = EncoderNetwork(
                 stride_len=self.strideLen,
@@ -193,6 +210,16 @@ class AdvAutoencoder(nn.Module):
                 N_Y=self.N_Y,
                 affine_struct=self.affineStruct,
             )
+        elif self.modelSelector == 3:
+            dn = ann_kan_koopman.DecoderNetwork(
+                state_size=self.stateSize,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                output_window_len=self.outputWindowLen,
+                N_Y=self.N_Y,
+                affine_struct=self.affineStruct,
+            )
         else:
             dn = DecoderNetwork(
                 state_size=self.stateSize,
@@ -217,6 +244,15 @@ class AdvAutoencoder(nn.Module):
             )
         elif self.modelSelector == 2:
             bn = ann_koopman.BridgeNetwork(
+                state_size=self.stateSize,
+                N_U=self.N_U,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                affine_struct=self.affineStruct,
+            )
+        elif self.modelSelector == 3:
+            bn = ann_kan_koopman.BridgeNetwork(
                 state_size=self.stateSize,
                 N_U=self.N_U,
                 n_neurons=self.n_neurons,
@@ -674,8 +710,8 @@ class AdvAutoencoder(nn.Module):
             # Option 2: Try JIT scripting with inference optimization
             try:
                 # Create sample inputs with correct shapes
-                sample_y = torch.randn(sample_y_shape, dtype=torch.float64)
-                sample_u = torch.randn(sample_u_shape, dtype=torch.float64)
+                sample_y = torch.randn(sample_y_shape, dtype=torch.float32)
+                sample_u = torch.randn(sample_u_shape, dtype=torch.float32)
 
                 # Trace the model
                 model.eval()

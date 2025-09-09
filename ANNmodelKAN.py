@@ -54,7 +54,7 @@ class EncoderNetwork(nn.Module):
         x = torch.cat(
             [inputs_y.float().to(device), inputs_u.float().to(device)], dim=-1
         ).to(device)
-        return self.kan_network(x)
+        return self.kan_network(x).squeeze()
 
 
 class DecoderNetwork(nn.Module):
@@ -105,7 +105,7 @@ class DecoderNetwork(nn.Module):
 
     def forward(self, inputs_state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         device = next(self.parameters()).device
-        x = self.kan_network(inputs_state.to(device))
+        x = self.kan_network(inputs_state.to(device)).squeeze()
         if self.affine_struct:
             x = x.view(-1, self.output_window_len, self.N_Y, self.state_size)
             out = torch.sum(x * inputs_state.unsqueeze(1).unsqueeze(1), dim=-1)
@@ -160,7 +160,7 @@ class BridgeNetwork(nn.Module):
         input_concat = torch.cat(
             [inputs_state.float().to(device), inputs_novelU.float().to(device)], dim=-1
         ).to(device)
-        kan_output = self.kan_network(input_concat)
+        kan_output = self.kan_network(input_concat).squeeze()
         bias = self.bridge_bias(kan_output)
         if self.affine_struct:
             AB = self.bridge_f(kan_output).view(

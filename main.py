@@ -28,7 +28,7 @@ plt.rcParams["figure.dpi"] = 100
 plt.rcParams["font.size"] = 14
 plt.rcParams["text.usetex"] = False
 
-# torch.set_default_dtype(torch.float64)  # or torch.float16, torch.float64, etc.
+# torch.set_default_dtype(torch.float32)  # or torch.float16, torch.float32, etc.
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
 
@@ -105,6 +105,7 @@ class Options:
     def __init__(self):
         self.nonLinearInputChar = True
         self.dynamicalSystemSelector = SystemSelectorEnum().AUVNonlinearModel
+        self.stringDynamicalSystemSelector = "AUVNonlinearModel"
         self.affineStruct = True
         self.openLoopStartingPoint = 15
         self.horizon = 10
@@ -144,25 +145,32 @@ if __name__ == "__main__":
         print(f"Option.dynamicalSystemSelector = {int(sys.argv[3])}")
         if int(sys.argv[3]) == 1:
             Option.dynamicalSystemSelector = SystemSelectorEnum().TWOTANKS
+            Option.stringDynamicalSystemSelector = "TWOTANKS"
         elif int(sys.argv[3]) == 2:
             # It's actually the hammerstein-wiener! But the old name stuck
             Option.dynamicalSystemSelector = SystemSelectorEnum().BILINEAR
+            Option.stringDynamicalSystemSelector = "BILINEAR"
         elif int(sys.argv[3]) == 3:
             Option.dynamicalSystemSelector = SystemSelectorEnum.MAGNETO_dataset
+            Option.stringDynamicalSystemSelector = "MAGNETO_dataset"
             Option.closedLoopSim = False
         elif int(sys.argv[3]) == 4:
             Option.dynamicalSystemSelector = SystemSelectorEnum.TANKS_dataset
+            Option.stringDynamicalSystemSelector = "TANKS_dataset"
             Option.closedLoopSim = False
         elif int(sys.argv[3]) == 5:
             Option.dynamicalSystemSelector = SystemSelectorEnum.SILVERBOX_dataset
+            Option.stringDynamicalSystemSelector = "SILVERBOX_dataset"
             Option.closedLoopSim = False
         elif int(sys.argv[3]) == 6:
             Option.dynamicalSystemSelector = (
                 SystemSelectorEnum().SpacecraftNonlinearModel
             )
+            Option.stringDynamicalSystemSelector = "SpacecraftNonlinearModel"
             Option.closedLoopSim = False
         elif int(sys.argv[3]) == 7:
             Option.dynamicalSystemSelector = SystemSelectorEnum().AUVNonlinearModel
+            Option.stringDynamicalSystemSelector = "AUVNonlinearModel"
             Option.closedLoopSim = False
 
     if len(sys.argv) > 4:
@@ -213,6 +221,9 @@ if __name__ == "__main__":
         elif int(sys.argv[10]) == 2:
             print("Enable Koopman model")
             Option.modelSelector = 2
+        elif int(sys.argv[10]) == 3:
+            print("Enable KAN + Koopman model")
+            Option.modelSelector = 3
         else:
             Option.modelSelector = False
 
