@@ -518,7 +518,7 @@ if __name__ == "__main__":
                 plt.legend()
                 plt.tight_layout()
                 plt.savefig(
-                    f"open_loop_simulation_component_{i+1}_{validationOnMultiHarmonic}_{_reset}_{YTrue}.png"
+                    f"open_loop_simulation_component_{i+1}_{validationOnMultiHarmonic}_{_reset}.png"
                 )
                 plt.close()  # Close the figure to free memory
         return fit, NRMSE, logY, logYR
