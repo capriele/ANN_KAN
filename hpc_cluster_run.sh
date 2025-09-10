@@ -97,7 +97,7 @@ for arg in "$@"; do
 done
 echo ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10}
 i=1
-python3 -u main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10} | tee -a "$filename"
+python3 -u main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10} ${1} | tee -a "$filename"
 
 base_dir="results/${method}/${exp_name}"
 
@@ -105,9 +105,17 @@ base_dir="results/${method}/${exp_name}"
 mkdir -p "${base_dir}/open_loop" "${base_dir}/closed_loop" "dumps/${method}"
 
 # ---- Move dump file ----
-for file in dumps/dump*.mat; do
+for file in dumps/dump_${1}.mat; do
     if [ -f "$file" ]; then
         mv "$file" "${base_dir}/dump.mat"
+        break  # remove this line if you want to move *all* dumps
+    fi
+done
+
+# ---- Move model file ----
+for file in dumps/model_${1}.mat; do
+    if [ -f "$file" ]; then
+        mv "$file" "${base_dir}/model.mat"
         break  # remove this line if you want to move *all* dumps
     fi
 done

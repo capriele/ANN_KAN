@@ -128,6 +128,8 @@ class Options:
         self.early_stopping_patience = 8
         self.min_delta = 0.0000001
         self.modelSelector = False
+        self.modelKind = "ann"
+        self.testName = "Test"
 
 
 if __name__ == "__main__":
@@ -218,14 +220,23 @@ if __name__ == "__main__":
         if int(sys.argv[10]) == 1:
             print("Enable KAN model")
             Option.modelSelector = 1
+            Option.modelKind = "kan"
         elif int(sys.argv[10]) == 2:
             print("Enable Koopman model")
             Option.modelSelector = 2
+            Option.modelKind = "koopman"
         elif int(sys.argv[10]) == 3:
             print("Enable KAN + Koopman model")
             Option.modelSelector = 3
+            Option.modelKind = "kan_koopman"
         else:
+            Option.modelKind = "ann"
             Option.modelSelector = False
+
+    # Find model test name
+    if len(sys.argv) > 11:
+        print(f"Option.testName = {str(sys.argv[11])}")
+        Option.testName = str(sys.argv[11])
 
     warnings.filterwarnings("ignore")
 
@@ -268,8 +279,9 @@ if __name__ == "__main__":
     )
     torch.save(
         model.model.state_dict(),
-        "dumps/model_{0}_{1}.mat".format(
-            Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
+        "results/{0}/{1}/model.mat".format(
+            Option.modelKind,
+            Option.testName,
         ),
     )
     # If you want load a previous model without training
@@ -701,9 +713,7 @@ if __name__ == "__main__":
 
     print(Option.__dict__)
     scipy.io.matlab.savemat(
-        "dumps/dump_{0}_{1}.mat".format(
-            Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
-        ),
+        "dumps/dump_{0}.mat".format(Option.testName),
         {
             "U": U_n,
             "Y": Y_n,
