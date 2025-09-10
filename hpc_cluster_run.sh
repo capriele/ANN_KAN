@@ -61,17 +61,35 @@ echo "LAST ARG: $last_arg"
 mkdir -p dumps
 if [ "$last_arg" = "1" ]; then
     mkdir -p results/kan/${1}
+    mkdir -p results/kan/${1}/open_loop
+    mkdir -p results/kan/${1}/closed_loop
     filename="results/kan/${1}/log.txt"
 elif [ "$last_arg" = "2" ]; then
     mkdir -p results/koopman/${1}
+    mkdir -p results/koopman/${1}/open_loop
+    mkdir -p results/koopman/${1}/closed_loop
     filename="results/koopman/${1}/log.txt"
 elif [ "$last_arg" = "3" ]; then
     mkdir -p results/kan_koopman/${1}
+    mkdir -p results/kan_koopman/${1}/open_loop
+    mkdir -p results/kan_koopman/${1}/closed_loop
     filename="results/kan_koopman/${1}/log.txt"
 else
     mkdir -p results/ann/${1}
+    mkdir -p results/ann/${1}/open_loop
+    mkdir -p results/ann/${1}/closed_loop
     filename="results/ann/${1}/log.txt"
 fi
+
+exp_name="${1}"
+
+# Pick method based on last_arg
+case "$last_arg" in
+    1) method="kan" ;;
+    2) method="koopman" ;;
+    3) method="kan_koopman" ;;
+    *) method="ann" ;;
+esac
 
 for arg in "$@"; do
   echo "Arg $n: $arg"
@@ -80,14 +98,6 @@ done
 echo ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10}
 i=1
 python3 -u main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10} | tee -a "$filename"
-exp_name="$1"
-
-# Pick method based on last_arg
-case "$last_arg" in
-    1) method="kan" ;;
-    2) method="koopman" ;;
-    *) method="ann" ;;
-esac
 
 base_dir="results/${method}/${exp_name}"
 
@@ -103,12 +113,12 @@ for file in dumps/dump*.mat; do
 done
 
 # ---- Move open loop plots ----
-for file in ./open*.png; do
+for file in ./open_loop_*.png; do
     [ -f "$file" ] && mv "$file" "${base_dir}/open_loop/"
 done
 
 # ---- Move closed loop plots ----
-for file in ./closed*.png; do
+for file in ./closed_loop_*.png; do
     [ -f "$file" ] && mv "$file" "${base_dir}/closed_loop/"
 done
 

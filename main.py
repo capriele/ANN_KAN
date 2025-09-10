@@ -49,9 +49,6 @@ class SystemSelectorEnum:
         u_vn = np.reshape(uv.T[0], (numel_v, 1))
         y_vn = np.reshape(yv.T[0], (numel_v, 1))
 
-        dynamic_model.inputSize = u_vero.T[0]
-        dynamic_model.outputSize = y_vero.T[0]
-
         mean_y = np.mean(y_n)
         mean_u = np.mean(u_n)
         std_y = np.std(y_n)
@@ -239,7 +236,6 @@ if __name__ == "__main__":
 
     Option.inputSize = simulatedSystem.inputSize
     Option.outputSize = simulatedSystem.outputSize
-    Option.closedLoopSim = False
 
     model = AdvAutoencoder(
         affineStruct=Option.affineStruct,
@@ -470,7 +466,6 @@ if __name__ == "__main__":
                     torch.tensor(pastY, dtype=torch.float32).reshape(1, -1).to(device),
                     torch.tensor(pastU, dtype=torch.float32).reshape(1, -1).to(device),
                 )
-                x0 = x0.unsqueeze(0)
                 print("*", end="")
             else:
                 _u = torch.tensor(u, dtype=torch.float32).reshape(1, Option.inputSize)
@@ -486,8 +481,12 @@ if __name__ == "__main__":
 
             y = model.model.output_decoder(x0)[1]
             if i >= openLoopStartingPoint:
-                logY += [(y[0][-2]).detach().cpu().numpy()]
-                logYR += [y_kReal]
+                logY += [
+                    np.reshape(
+                        (y[0][-2]).detach().cpu().numpy(), (1, Option.outputSize)
+                    )
+                ]
+                logYR += [np.reshape(y_kReal, (1, Option.outputSize))]
                 logU += [u]
             print(".", end="")
         print("\n")
@@ -637,16 +636,25 @@ if __name__ == "__main__":
             plt.grid()
 
             for i in range(logU.shape[1]):
-                (uk,) = plt.plot(logU[:, i])
+                if logU.ndim == 1:
+                    (uk,) = plt.plot(logU[i])
+                else:
+                    (uk,) = plt.plot(logU[:, i])
                 le.append(uk)
                 lv.append("$u_{k}$")
 
             for i in range(logYR.shape[1]):
-                (yk,) = plt.plot(logYR[:, i])
+                if logYR.ndim == 1:
+                    (yk,) = plt.plot(logYR[i])
+                else:
+                    (yk,) = plt.plot(logYR[:, i])
                 le.append(yk)
                 lv.append("$y_{k}$")
 
-            (rk,) = plt.plot(logY)
+            if logYR.ndim == 1:
+                (rk,) = plt.plot(logY[i])
+            else:
+                (rk,) = plt.plot(logY[:, i])
             le.append(rk)
             lv.append("$r_{k}$")
             plt.legend(le, lv)

@@ -55,7 +55,7 @@ class EncoderNetwork(nn.Module):
         x = torch.cat(
             [inputs_y.float().to(device), inputs_u.float().to(device)], dim=-1
         ).to(device)
-        return self.kan_network(x).squeeze()
+        return self.kan_network(x)
 
 
 class DecoderNetwork(nn.Module):
