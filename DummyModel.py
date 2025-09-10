@@ -14,6 +14,8 @@ class DummyModel:
     def __init__(self,nonLinearInputChar=False,useExternalDataset=False):
         print("***Warning:dummyModel***")
         self.stateSize = 1
+        self.inputSize = 1
+        self.outputSize = 1
 
     def stateMap(self,xk,u):
         print("***Warning:dummyModel***")

@@ -49,6 +49,9 @@ class SystemSelectorEnum:
         u_vn = np.reshape(uv.T[0], (numel_v, 1))
         y_vn = np.reshape(yv.T[0], (numel_v, 1))
 
+        dynamic_model.inputSize = u_vero.T[0]
+        dynamic_model.outputSize = y_vero.T[0]
+
         mean_y = np.mean(y_n)
         mean_u = np.mean(u_n)
         std_y = np.std(y_n)
