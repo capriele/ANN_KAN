@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from typing import Optional, Tuple, List, Union
 from kan import KAN
 
+
 class EncoderNetwork(nn.Module):
     """Encoder network for the KAN-based ANN model."""
 
@@ -54,7 +55,7 @@ class EncoderNetwork(nn.Module):
         x = torch.cat(
             [inputs_y.float().to(device), inputs_u.float().to(device)], dim=-1
         ).to(device)
-        return self.kan_network(x).squeeze()
+        return self.kan_network(x)
 
 
 class DecoderNetwork(nn.Module):
@@ -82,7 +83,7 @@ class DecoderNetwork(nn.Module):
         self.output_window_len = output_window_len
         self.N_Y = N_Y
         self.affine_struct = affine_struct
-        width = [state_size] + [n_neurons] * (n_layer - 1) + [n_neurons]
+        width = [state_size] + [n_neurons] * (n_layer)
         out_dim = (
             output_window_len * state_size * N_Y
             if affine_struct
@@ -105,7 +106,7 @@ class DecoderNetwork(nn.Module):
 
     def forward(self, inputs_state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         device = next(self.parameters()).device
-        x = self.kan_network(inputs_state.to(device)).squeeze()
+        x = self.kan_network(inputs_state.to(device))
         if self.affine_struct:
             x = x.view(-1, self.output_window_len, self.N_Y, self.state_size)
             out = torch.sum(x * inputs_state.unsqueeze(1).unsqueeze(1), dim=-1)
@@ -137,7 +138,7 @@ class BridgeNetwork(nn.Module):
         self.n_layer = n_layer
         self.affine_struct = affine_struct
         input_dim = state_size + N_U
-        width = [input_dim] + [n_neurons] * (n_layer - 1)
+        width = [input_dim] + [n_neurons] * (n_layer)
         self.kan_network = KAN(
             width=width,
             grid=grid_size,
@@ -160,16 +161,13 @@ class BridgeNetwork(nn.Module):
         input_concat = torch.cat(
             [inputs_state.float().to(device), inputs_novelU.float().to(device)], dim=-1
         ).to(device)
-        kan_output = self.kan_network(input_concat).squeeze()
-        bias = self.bridge_bias(kan_output)
+        x = self.kan_network(input_concat)
+        bias = self.bridge_bias(x)
         if self.affine_struct:
-            AB = self.bridge_f(kan_output).view(
-                -1, self.state_size, self.state_size + self.N_U
-            )
-            input_concat_expanded = input_concat.unsqueeze(-1)
-            out = torch.bmm(AB, input_concat_expanded).squeeze(-1) + bias
+            AB = self.bridge_f(x).view(-1, self.state_size, self.state_size + self.N_U)
+            out = torch.bmm(AB, input_concat.unsqueeze(-1)).squeeze(-1) + bias
             return out, AB, bias
-        return bias, kan_output, bias
+        return bias, x, bias
 
     def prune(self, threshold: float = 1e-2) -> None:
         self.kan_network.prune()
@@ -247,6 +245,7 @@ class ANNModel(nn.Module):
             predicted_ok = self.output_decoder(state_k)[1]
             predicted_ok_collection.append(predicted_ok)
             state_k_collection.append(state_k)
+            i_target_k = i_target_k.reshape(predicted_ok.shape)
             prediction_error_collection.append(torch.abs(predicted_ok - i_target_k))
 
             if forwarded_state is not None:
