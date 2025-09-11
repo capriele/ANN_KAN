@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ann_kan_2
+#SBATCH --job-name=ann
 #SBATCH --output=slurm-%j.out
 #SBATCH --error=slurm-%j.err
 #SBATCH --time=96:00:00
@@ -74,6 +74,11 @@ elif [ "$last_arg" = "3" ]; then
     mkdir -p results/kan_koopman/${1}/open_loop
     mkdir -p results/kan_koopman/${1}/closed_loop
     filename="results/kan_koopman/${1}/log.txt"
+elif [ "$last_arg" = "4" ]; then
+    mkdir -p results/mamba/${1}
+    mkdir -p results/mamba/${1}/open_loop
+    mkdir -p results/mamba/${1}/closed_loop
+    filename="results/mamba/${1}/log.txt"
 else
     mkdir -p results/ann/${1}
     mkdir -p results/ann/${1}/open_loop
@@ -88,6 +93,7 @@ case "$last_arg" in
     1) method="kan" ;;
     2) method="koopman" ;;
     3) method="kan_koopman" ;;
+    4) method="mamba" ;;
     *) method="ann" ;;
 esac
 
@@ -97,7 +103,9 @@ for arg in "$@"; do
 done
 echo ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10}
 i=1
-python3 -u main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10} ${1} | tee -a "$filename"
+rm "$filename"
+touch "$filename"
+python3 -u main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${arg9} ${arg10} ${1} | tee -a "$filename"
 
 base_dir="results/${method}/${exp_name}"
 

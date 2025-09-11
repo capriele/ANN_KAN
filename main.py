@@ -16,6 +16,7 @@ from DummyModel import DummyModel
 from multiprocessing import Process, freeze_support
 from SpacecraftCW import SpacecraftNonlinear
 from AUV import AUV
+from AUVDataset import AUVDataset
 
 # Set random seeds for reproducibility
 np.random.seed(1)
@@ -30,7 +31,7 @@ plt.rcParams["text.usetex"] = False
 
 # torch.set_default_dtype(torch.float32)  # or torch.float16, torch.float32, etc.
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("cpu")
+# device = torch.device("cpu")
 
 
 # @unique
@@ -100,6 +101,12 @@ class SystemSelectorEnum:
         u, y, u_val, y_val = dynamic_model.prepareDataset(25000, 1000)
         return dynamic_model, u, y, u_val, y_val
 
+    def AUVDatasetNonlinear(self, non_linear_input_char=False):
+        print("AUVDatasetNonlinear")
+        dynamic_model = AUVDataset()
+        u, y, u_val, y_val = dynamic_model.prepareDataset(25000, 1000)
+        return dynamic_model, u, y, u_val, y_val
+
 
 class Options:
     def __init__(self):
@@ -122,7 +129,7 @@ class Options:
         self.outputSize = 1
         self.outputWindowLen = 2
         self.n_layers = 3
-        self.n_neurons = 20
+        self.n_neurons = 30
         self.epochs = 150
         self.batch_size = 24 * 2
         self.early_stopping_patience = 8
@@ -174,6 +181,10 @@ if __name__ == "__main__":
             Option.dynamicalSystemSelector = SystemSelectorEnum().AUVNonlinearModel
             Option.stringDynamicalSystemSelector = "AUVNonlinearModel"
             Option.closedLoopSim = False
+        elif int(sys.argv[3]) == 8:
+            Option.dynamicalSystemSelector = SystemSelectorEnum().AUVDatasetNonlinear
+            Option.stringDynamicalSystemSelector = "AUVDatasetNonlinear"
+            Option.closedLoopSim = False
 
     if len(sys.argv) > 4:
         print(f"Option.nonLinearInputChar = {int(sys.argv[4])}")
@@ -216,7 +227,6 @@ if __name__ == "__main__":
 
     # Check KAN mode flag
     if len(sys.argv) > 10:
-        print(f"Option.modelSelector = {int(sys.argv[10])}")
         if int(sys.argv[10]) == 1:
             print("Enable KAN model")
             Option.modelSelector = 1
@@ -229,14 +239,20 @@ if __name__ == "__main__":
             print("Enable KAN + Koopman model")
             Option.modelSelector = 3
             Option.modelKind = "kan_koopman"
+        elif int(sys.argv[10]) == 4:
+            print("Enable Mamba model")
+            Option.modelSelector = 4
+            Option.modelKind = "mamba"
         else:
             Option.modelKind = "ann"
             Option.modelSelector = False
+        print(f"Option.modelKind = {Option.modelKind}")
+        print(f"Option.modelSelector = {Option.modelSelector}")
 
     # Find model test name
     if len(sys.argv) > 11:
-        print(f"Option.testName = {str(sys.argv[11])}")
-        Option.testName = str(sys.argv[11])
+        print(f"Option.testName = {str(sys.argv[-1])}")
+        Option.testName = str(sys.argv[-1])
 
     warnings.filterwarnings("ignore")
 
@@ -276,21 +292,17 @@ if __name__ == "__main__":
         early_stopping_patience=Option.early_stopping_patience,
         min_delta=Option.min_delta,
         device=device,
+        batchMode=False,
     )
     torch.save(
         model.model.state_dict(),
-        "results/{0}/{1}/model.mat".format(
-            Option.modelKind,
-            Option.testName,
-        ),
+        f"results/{Option.modelKind}/{Option.testName}/model.mat",
     )
     # If you want load a previous model without training
     # model.model, _, _, _ = model.ANNModel()
     # model.model.load_state_dict(
     #     torch.load(
-    #         "dumps/model_{0}_{1}.mat".format(
-    #             Option.stringDynamicalSystemSelector, Option.nonLinearInputChar
-    #         ),
+    #         f"results/{Option.modelKind}/{Option.testName}/model.mat",
     #         map_location=torch.device("cpu"),
     #         weights_only=False,
     #     ),

@@ -357,21 +357,35 @@ class AdvAutoencoder(nn.Module):
         early_stopping_patience: int = 8,
         min_delta: float = 0.000001,
         device=None,
+        batchMode=False,
     ):
         print("trainModel")
-        # tmp = self.privateTrainModelBatch(
-        tmp = self.privateTrainModel(
-            [
-                {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                # {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
-            ],
-            shuffled,
-            early_stopping_patience=early_stopping_patience,
-            min_delta=min_delta,
-            epochs=epochs,
-            device=device,
-        )
+        if batchMode:
+            self.privateTrainModelBatch(
+                [
+                    {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
+                    # {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
+                    {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
+                ],
+                shuffled,
+                early_stopping_patience=early_stopping_patience,
+                min_delta=min_delta,
+                epochs=epochs,
+                device=device,
+            )
+        else:
+            self.privateTrainModel(
+                [
+                    {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
+                    # {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
+                    {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
+                ],
+                shuffled,
+                early_stopping_patience=early_stopping_patience,
+                min_delta=min_delta,
+                epochs=epochs,
+                device=device,
+            )
 
     def privateTrainModel(
         self,
@@ -636,15 +650,6 @@ class AdvAutoencoder(nn.Module):
                     if avg_val_loss < best_val_loss:
                         best_val_loss = avg_val_loss
                         patience_counter = 0
-                        if save_best_model and checkpoint_dir:
-                            self._save_checkpoint_parallel(
-                                self.model,
-                                optimizer,
-                                scheduler,
-                                epoch,
-                                best_val_loss,
-                                checkpoint_dir / "best_model.pth",
-                            )
                     else:
                         patience_counter += 1
 
@@ -812,23 +817,6 @@ class AdvAutoencoder(nn.Module):
             num_batches += 1
 
         return val_loss / max(num_batches, 1)
-
-    def _save_checkpoint_parallel(self, model, optimizer, scheduler, epoch, loss, path):
-        """Save checkpoint using background thread."""
-
-        def save_fn():
-            checkpoint = {
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "scheduler_state_dict": scheduler.state_dict(),
-                "epoch": epoch,
-                "loss": loss,
-            }
-            torch.save(checkpoint, path)
-
-        # Use ThreadPoolExecutor for non-blocking save
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            executor.submit(save_fn)
 
     def _cleanup_resources(self):
         """Clean up resources after training."""
@@ -1109,21 +1097,6 @@ class AdvAutoencoder(nn.Module):
                         else:
                             patience_counter += 1
                         best_val_loss = avg_val_loss
-                        if save_best_model and checkpoint_dir:
-                            self._save_checkpoint(
-                                model,
-                                optimizer,
-                                scheduler,
-                                epoch,
-                                best_val_loss,
-                                checkpoint_dir / "best_model.pth",
-                            )
-
-                            # Store only best models
-                            self.model = model
-                            self.convEncoder = convEncoder
-                            self.outputEncoder = outputEncoder
-                            self.bridgeNetwork = bridgeNetwork
 
                     if patience_counter >= early_stopping_patience:
                         print(f"Early stopping triggered after {epoch + 1} epochs")
@@ -1207,26 +1180,6 @@ class AdvAutoencoder(nn.Module):
                         raise
 
         return val_loss / max(num_batches, 1)
-
-    def _save_checkpoint(
-        self,
-        model: nn.Module,
-        optimizer: optim.Optimizer,
-        scheduler: optim.lr_scheduler._LRScheduler,
-        epoch: int,
-        val_loss: float,
-        filepath: Path,
-    ) -> None:
-        """Save model checkpoint."""
-        checkpoint = {
-            "epoch": epoch,
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "scheduler_state_dict": scheduler.state_dict(),
-            "val_loss": val_loss,
-        }
-        torch.save(checkpoint, filepath)
-        print(f"Checkpoint saved: {filepath}")
 
     def getModel(self):
         return self.model

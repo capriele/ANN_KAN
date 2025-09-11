@@ -16,7 +16,10 @@ rm *.out
 # Get all job IDs for the current user and cancel them
 user=$(whoami)
 for job in $(squeue -u "$user" -h -o "%A"); do
-   scancel "$job"
+    #if [ "$job" -gt 87808 ]; then
+    scancel "$job"
+    #fi
+    echo $job
 done
 
 wait_for_job() {
@@ -56,114 +59,54 @@ submit_and_wait() {
     fi
     
     # Update the last job ID for next submission
-    #LAST_JOB_ID=$jobid
+    LAST_JOB_ID=$jobid
     
     # Return the job ID for potential use
-    #echo $LAST_JOB_ID
+    echo $LAST_JOB_ID
 }
 
 #################################
 ##        Classical ANN        ##
 #################################
-submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh NLTankNLF5Affine "5 1 1 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF2Affine "2 1 1 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine "5 1 1 6 10 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF2NonAffine "2 1 1 6 10 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF5Affine "5 1 0 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF2Affine "2 1 0 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF5NonAffine "5 1 0 6 10 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF2NonAffine "2 1 0 6 10 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh HWSystemF5Affine "5 2 1 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh HWSystemF2Affine "2 2 1 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh HWSystemF5NonAffine "5 2 1 6 10 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh HWSystemF2NonAffine "2 2 1 6 10 0 0 0"
-
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetRHF2Affine "2 3 0 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetRHF2NonAffine "2 3 0 6 10 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetRHF5Affine "5 3 0 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetRHF5NonAffine "5 3 0 6 10 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetTankNLF2Affine "2 4 0 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetTankNLF2NonAffine "2 4 0 6 10 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetTankNLF5Affine "5 4 0 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetTankNLF5NonAffine "5 4 0 6 10 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetSilverNLF2Affine "2 5 0 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetSilverNLF2NonAffine "2 5 0 6 10 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetSilverNLF5Affine "5 5 0 6 10 1 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetSilverNLF5NonAffine "5 5 0 6 10 0 0 0"
-
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh RHReducedF5NONAffineGroupLassoState "5 3 0 6 10 0 1 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh RHReducedF5NONAffineGroupLassoInput "5 3 0 6 10 0 2 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh RHReducedF5NonAffine2 "5 3 0 2 2 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh RHReducedF5NonAffine4 "5 3 0 4 4 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinReducedF5NONAffineGroupLassoState "5 1 0 6 10 0 1 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinReducedF5NONAffineGroupLassoInput "5 1 0 6 10 0 2 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF5NonAffine2 "5 1 0 2 2 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF5NonAffine4 "5 1 0 4 4 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh DSTankReducedF5NONAffineGroupLassoState "5 4 0 6 10 0 1 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh DSTankReducedF5NONAffineGroupLassoInput "5 4 0 6 10 0 2 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh DSTankReducedF5NonAffine2 "5 4 0 2 2 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh DSTankReducedF5NonAffine4 "5 4 0 4 4 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh DSTankReducedF5NonAffine24 "5 4 0 2 4 0 0 0"
-
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLReducedF5NONAffineGroupLassoState "5 1 1 6 10 0 1 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLReducedF5NONAffineGroupLassoInput "5 1 1 6 10 0 2 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine25 "5 1 1 2 5 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine3 "5 1 1 3 3 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine5 "5 1 1 5 5 0 0 0"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine35 "5 1 1 3 5 0 0 0"
+bash hpc_ann.sh
+submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0"
 
 #################################
 ## The same tasks but with KAN ##
 #################################
-submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh NLTankNLF5Affine "5 1 1 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF2Affine "2 1 1 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine "5 1 1 6 10 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF2NonAffine "2 1 1 6 10 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF5Affine "5 1 0 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF2Affine "2 1 0 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF5NonAffine "5 1 0 6 10 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF2NonAffine "2 1 0 6 10 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh HWSystemF5Affine "5 2 1 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh HWSystemF2Affine "2 2 1 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh HWSystemF5NonAffine "5 2 1 6 10 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh HWSystemF2NonAffine "2 2 1 6 10 0 0 0 1"
-
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetRHF2Affine "2 3 0 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetRHF2NonAffine "2 3 0 6 10 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetRHF5Affine "5 3 0 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetRHF5NonAffine "5 3 0 6 10 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetTankNLF2Affine "2 4 0 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetTankNLF2NonAffine "2 4 0 6 10 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetTankNLF5Affine "5 4 0 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetTankNLF5NonAffine "5 4 0 6 10 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetSilverNLF5Affine "5 5 0 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetSilverNLF2Affine "2 5 0 6 10 1 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetSilverNLF5NonAffine "5 5 0 6 10 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh datasetSilverNLF2NonAffine "2 5 0 6 10 0 0 0 1"
-
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh RHReducedF5NONAffineGroupLassoState "5 3 0 6 10 0 1 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh RHReducedF5NONAffineGroupLassoInput "5 3 0 6 10 0 2 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh RHReducedF5NonAffine2 "5 3 0 2 2 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh RHReducedF5NonAffine4 "5 3 0 4 4 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinReducedF5NONAffineGroupLassoState "5 1 0 6 10 0 1 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinReducedF5NONAffineGroupLassoInput "5 1 0 6 10 0 2 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF5NonAffine2 "5 1 0 2 2 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankLinF5NonAffine4 "5 1 0 4 4 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh DSTankReducedF5NONAffineGroupLassoState "5 4 0 6 10 0 1 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh DSTankReducedF5NONAffineGroupLassoInput "5 4 0 6 10 0 2 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh DSTankReducedF5NonAffine2 "5 4 0 2 2 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh DSTankReducedF5NonAffine4 "5 4 0 4 4 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh DSTankReducedF5NonAffine24 "5 4 0 2 4 0 0 0 1"
-
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLReducedF5NONAffineGroupLassoState "5 1 1 6 10 0 1 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLReducedF5NONAffineGroupLassoInput "5 1 1 6 10 0 2 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine25 "5 1 1 2 5 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine3 "5 1 1 3 3 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine5 "5 1 1 5 5 0 0 0 1"
-# submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh NLTankNLF5NonAffine35 "5 1 1 3 5 0 0 0 1"
+bash hpc_kan.sh
+submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 1"
 
 #####################################
 ## The same tasks but with Koopman ##
 #####################################
-submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh NLTankNLF5Affine "5 1 1 6 10 1 0 0 2"
-submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh NLTankNLF5NonAffine "5 1 1 6 10 0 0 0 2"
+bash hpc_koopman.sh
+submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 2"
+
+###########################################
+## The same tasks but with KAN + Koopman ##
+###########################################
+bash hpc_kan_koopman.sh
+submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 3"
+
+###################################
+## The same tasks but with MAMBA ##
+###################################
+#bash hpc_mamba.sh
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 4"
+
+###########
+## TESTS ##
+###########
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh SpacecraftCWAffine "5 6 1 6 10 1 0 0"
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:h100:1 hpc_cluster_run.sh SpacecraftCWAffine "5 6 1 6 10 1 0 0 1"
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:h100:1 hpc_cluster_run.sh AUV "5 7 1 6 10 1 0 0"
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV "5 7 1 6 10 1 0 0"
+#submit_and_wait --partition=gprod -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh AUV_A100 "5 7 1 6 10 1 0 0"
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:h100:1 hpc_cluster_run.sh AUV_H100 "5 7 1 6 10 1 0 0"
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh AUV_KAN_A100 "5 7 1 6 10 1 0 0 1"
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:h100:1 hpc_cluster_run.sh AUV_KAN_H100 "5 7 1 6 10 1 0 0 1"
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_KAN "5 7 1 6 10 1 0 0 1"
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh SpacecraftCWAffine "5 6 1 6 10 1 0 0"
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh SpacecraftCWAffine "5 6 1 6 10 1 0 0 1"
+#submit_and_wait --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB --gres=gpu:a100:1 hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0"
