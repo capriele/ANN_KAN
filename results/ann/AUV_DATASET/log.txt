@@ -115,641 +115,202 @@ tensor([[[-0.5316,  1.4351, -0.2523, -1.4336],
          [-0.5941,  1.7567, -3.8679,  1.1493],
          [-0.5939,  1.7554, -3.8495,  1.1473]]], dtype=torch.float64)
 trainModel
-Preparing dataset...
+Using device: cuda
+Auto-detected 4 workers
+Preparing dataset with parallel processing...
 20
-Using GPU: NVIDIA A100-SXM4-80GB
 Initializing new model...
 
 ANNModel(
   (conv_encoder): EncoderNetwork(
     (activation): ReLU()
     (layers): ModuleList(
-      (0): Linear(in_features=120, out_features=20, bias=True)
-      (1-2): 2 x Linear(in_features=20, out_features=20, bias=True)
-      (3): Linear(in_features=20, out_features=6, bias=True)
+      (0): Linear(in_features=120, out_features=30, bias=True)
+      (1-2): 2 x Linear(in_features=30, out_features=30, bias=True)
+      (3): Linear(in_features=30, out_features=6, bias=True)
     )
   )
   (output_decoder): DecoderNetwork(
     (activation): ReLU()
     (layers): ModuleList(
-      (0): Linear(in_features=6, out_features=20, bias=True)
-      (1-2): 2 x Linear(in_features=20, out_features=20, bias=True)
+      (0): Linear(in_features=6, out_features=30, bias=True)
+      (1-2): 2 x Linear(in_features=30, out_features=30, bias=True)
     )
-    (final_layer): Linear(in_features=20, out_features=48, bias=True)
+    (final_layer): Linear(in_features=30, out_features=48, bias=True)
   )
   (bridge_network): BridgeNetwork(
     (activation): ReLU()
-    (bridge0): Linear(in_features=10, out_features=20, bias=True)
+    (bridge0): Linear(in_features=10, out_features=30, bias=True)
     (hidden_layers): ModuleList(
-      (0-1): 2 x Linear(in_features=20, out_features=20, bias=True)
+      (0-1): 2 x Linear(in_features=30, out_features=30, bias=True)
     )
-    (bridge_bias): Linear(in_features=20, out_features=6, bias=True)
-    (bridge_f): Linear(in_features=20, out_features=60, bias=True)
+    (bridge_bias): Linear(in_features=30, out_features=6, bias=True)
+    (bridge_f): Linear(in_features=30, out_features=60, bias=True)
   )
 )
-Total parameters: 7,820, Trainable: 7,820
+Total parameters: 13,470, Trainable: 13,470
+Starting training for 150 epochs with 4 workers...
 Loss weights: {'multiStep_decodeError': 100, 'oneStepDecoderError': 1000, 'forwardError': 3}
-Starting training for 150 epochs...
-Epoch [1/150] | Train Loss: 115.492023 | Val Loss: 3.250435 | LR: 2.00e-03 | Patience: 0 | Time: 16.3s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [2/150] | Train Loss: 2.178283 | Val Loss: 1.298522 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [3/150] | Train Loss: 1.285337 | Val Loss: 0.950184 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [4/150] | Train Loss: 1.137701 | Val Loss: 0.656325 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [5/150] | Train Loss: 0.670705 | Val Loss: 0.506832 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [6/150] | Train Loss: 0.681282 | Val Loss: 0.416520 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [7/150] | Train Loss: 0.449199 | Val Loss: 0.341460 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [8/150] | Train Loss: 1.011366 | Val Loss: 0.321478 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [9/150] | Train Loss: 0.320478 | Val Loss: 0.256502 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [10/150] | Train Loss: 0.282269 | Val Loss: 0.229491 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [11/150] | Train Loss: 0.257037 | Val Loss: 0.210728 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [12/150] | Train Loss: 0.234297 | Val Loss: 0.195764 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [13/150] | Train Loss: 0.212964 | Val Loss: 0.184315 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [14/150] | Train Loss: 0.193383 | Val Loss: 0.174476 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [15/150] | Train Loss: 0.177718 | Val Loss: 0.166338 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [16/150] | Train Loss: 0.165972 | Val Loss: 0.158949 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [17/150] | Train Loss: 0.155251 | Val Loss: 0.152403 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [18/150] | Train Loss: 0.145972 | Val Loss: 0.147449 | LR: 2.00e-03 | Patience: 0 | Time: 14.8s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [19/150] | Train Loss: 0.138152 | Val Loss: 0.142587 | LR: 2.00e-03 | Patience: 0 | Time: 14.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [20/150] | Train Loss: 0.131551 | Val Loss: 0.137722 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [21/150] | Train Loss: 0.126262 | Val Loss: 0.132991 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [22/150] | Train Loss: 0.120873 | Val Loss: 0.128909 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [23/150] | Train Loss: 0.115924 | Val Loss: 0.125737 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [24/150] | Train Loss: 0.111837 | Val Loss: 0.122379 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [25/150] | Train Loss: 0.107859 | Val Loss: 0.119480 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [26/150] | Train Loss: 0.104513 | Val Loss: 0.116086 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [27/150] | Train Loss: 0.101718 | Val Loss: 0.112823 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [28/150] | Train Loss: 0.098539 | Val Loss: 0.109986 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [29/150] | Train Loss: 0.096059 | Val Loss: 0.107385 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [30/150] | Train Loss: 0.093425 | Val Loss: 0.105134 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [31/150] | Train Loss: 0.091144 | Val Loss: 0.103010 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [32/150] | Train Loss: 0.088978 | Val Loss: 0.100511 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [33/150] | Train Loss: 0.086755 | Val Loss: 0.098249 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [34/150] | Train Loss: 0.084640 | Val Loss: 0.096312 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [35/150] | Train Loss: 0.082662 | Val Loss: 0.094302 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [36/150] | Train Loss: 0.080897 | Val Loss: 0.092180 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [37/150] | Train Loss: 0.079224 | Val Loss: 0.090510 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [38/150] | Train Loss: 0.077742 | Val Loss: 0.088434 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [39/150] | Train Loss: 0.075940 | Val Loss: 0.086488 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [40/150] | Train Loss: 0.074470 | Val Loss: 0.084703 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [41/150] | Train Loss: 0.073279 | Val Loss: 0.082998 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [42/150] | Train Loss: 0.071814 | Val Loss: 0.081276 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [43/150] | Train Loss: 0.070334 | Val Loss: 0.079661 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [44/150] | Train Loss: 0.069025 | Val Loss: 0.077970 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [45/150] | Train Loss: 0.067606 | Val Loss: 0.076457 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [46/150] | Train Loss: 0.066692 | Val Loss: 0.075168 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [47/150] | Train Loss: 0.065500 | Val Loss: 0.073896 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [48/150] | Train Loss: 0.064375 | Val Loss: 0.072578 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [49/150] | Train Loss: 0.063529 | Val Loss: 0.071417 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [50/150] | Train Loss: 0.062719 | Val Loss: 0.070245 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [51/150] | Train Loss: 0.061780 | Val Loss: 0.069139 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [52/150] | Train Loss: 0.060936 | Val Loss: 0.068080 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [53/150] | Train Loss: 0.060206 | Val Loss: 0.067226 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [54/150] | Train Loss: 0.059510 | Val Loss: 0.066338 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [55/150] | Train Loss: 0.058799 | Val Loss: 0.065508 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [56/150] | Train Loss: 0.058130 | Val Loss: 0.064774 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [57/150] | Train Loss: 0.057585 | Val Loss: 0.064097 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [58/150] | Train Loss: 0.056886 | Val Loss: 0.063441 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [59/150] | Train Loss: 0.056172 | Val Loss: 0.062789 | LR: 2.00e-03 | Patience: 0 | Time: 14.8s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [60/150] | Train Loss: 0.055623 | Val Loss: 0.061936 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [61/150] | Train Loss: 0.055162 | Val Loss: 0.061183 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [62/150] | Train Loss: 0.055190 | Val Loss: 0.060660 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [63/150] | Train Loss: 0.054606 | Val Loss: 0.059830 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [64/150] | Train Loss: 0.054364 | Val Loss: 0.059103 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [65/150] | Train Loss: 0.053846 | Val Loss: 0.058364 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [66/150] | Train Loss: 0.053496 | Val Loss: 0.057767 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [67/150] | Train Loss: 0.053262 | Val Loss: 0.056978 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [68/150] | Train Loss: 0.052874 | Val Loss: 0.056507 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [69/150] | Train Loss: 0.052541 | Val Loss: 0.055960 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [70/150] | Train Loss: 0.052367 | Val Loss: 0.055714 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [71/150] | Train Loss: 0.052160 | Val Loss: 0.055660 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [72/150] | Train Loss: 0.051989 | Val Loss: 0.055270 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [73/150] | Train Loss: 0.051590 | Val Loss: 0.054704 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [74/150] | Train Loss: 0.051311 | Val Loss: 0.054212 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [75/150] | Train Loss: 0.051038 | Val Loss: 0.053790 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [76/150] | Train Loss: 0.050753 | Val Loss: 0.053275 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [77/150] | Train Loss: 0.050472 | Val Loss: 0.052999 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [78/150] | Train Loss: 0.050154 | Val Loss: 0.052543 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [79/150] | Train Loss: 0.049925 | Val Loss: 0.052071 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [80/150] | Train Loss: 0.049797 | Val Loss: 0.051668 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [81/150] | Train Loss: 0.049571 | Val Loss: 0.051151 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [82/150] | Train Loss: 0.049397 | Val Loss: 0.050673 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [83/150] | Train Loss: 0.049126 | Val Loss: 0.050310 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [84/150] | Train Loss: 0.048933 | Val Loss: 0.049910 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [85/150] | Train Loss: 0.048712 | Val Loss: 0.049494 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [86/150] | Train Loss: 0.048388 | Val Loss: 0.049159 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [87/150] | Train Loss: 0.048173 | Val Loss: 0.048835 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [88/150] | Train Loss: 0.048002 | Val Loss: 0.048349 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [89/150] | Train Loss: 0.047763 | Val Loss: 0.047918 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [90/150] | Train Loss: 0.047487 | Val Loss: 0.047497 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [91/150] | Train Loss: 0.047119 | Val Loss: 0.047040 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [92/150] | Train Loss: 0.046862 | Val Loss: 0.046737 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [93/150] | Train Loss: 0.046647 | Val Loss: 0.046340 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [94/150] | Train Loss: 0.046379 | Val Loss: 0.046073 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [95/150] | Train Loss: 0.046256 | Val Loss: 0.045768 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [96/150] | Train Loss: 0.045966 | Val Loss: 0.045531 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [97/150] | Train Loss: 0.045754 | Val Loss: 0.045200 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [98/150] | Train Loss: 0.045497 | Val Loss: 0.044902 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [99/150] | Train Loss: 0.045097 | Val Loss: 0.044546 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [100/150] | Train Loss: 0.044955 | Val Loss: 0.044172 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [101/150] | Train Loss: 0.044914 | Val Loss: 0.043997 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [102/150] | Train Loss: 0.044655 | Val Loss: 0.043735 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [103/150] | Train Loss: 0.044472 | Val Loss: 0.043474 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [104/150] | Train Loss: 0.044358 | Val Loss: 0.043180 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [105/150] | Train Loss: 0.044215 | Val Loss: 0.042890 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [106/150] | Train Loss: 0.043897 | Val Loss: 0.042599 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [107/150] | Train Loss: 0.043768 | Val Loss: 0.042292 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [108/150] | Train Loss: 0.043501 | Val Loss: 0.041839 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [109/150] | Train Loss: 0.043213 | Val Loss: 0.041451 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [110/150] | Train Loss: 0.043158 | Val Loss: 0.041146 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [111/150] | Train Loss: 0.042740 | Val Loss: 0.040930 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [112/150] | Train Loss: 0.042903 | Val Loss: 0.040596 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [113/150] | Train Loss: 0.042686 | Val Loss: 0.040443 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [114/150] | Train Loss: 0.042280 | Val Loss: 0.040247 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [115/150] | Train Loss: 0.042237 | Val Loss: 0.039850 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [116/150] | Train Loss: 0.042099 | Val Loss: 0.039730 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [117/150] | Train Loss: 0.041791 | Val Loss: 0.039496 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [118/150] | Train Loss: 0.041656 | Val Loss: 0.039289 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [119/150] | Train Loss: 0.041484 | Val Loss: 0.039095 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [120/150] | Train Loss: 0.041149 | Val Loss: 0.038927 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [121/150] | Train Loss: 0.041071 | Val Loss: 0.038664 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [122/150] | Train Loss: 0.040831 | Val Loss: 0.038460 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [123/150] | Train Loss: 0.040673 | Val Loss: 0.038373 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [124/150] | Train Loss: 0.040523 | Val Loss: 0.038188 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [125/150] | Train Loss: 0.040168 | Val Loss: 0.038009 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [126/150] | Train Loss: 0.040024 | Val Loss: 0.037733 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [127/150] | Train Loss: 0.039975 | Val Loss: 0.037474 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [128/150] | Train Loss: 0.039781 | Val Loss: 0.037194 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [129/150] | Train Loss: 0.039502 | Val Loss: 0.037047 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [130/150] | Train Loss: 0.039471 | Val Loss: 0.036766 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [131/150] | Train Loss: 0.039311 | Val Loss: 0.036554 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [132/150] | Train Loss: 0.039120 | Val Loss: 0.036307 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [133/150] | Train Loss: 0.038893 | Val Loss: 0.036099 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [134/150] | Train Loss: 0.038761 | Val Loss: 0.035849 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [135/150] | Train Loss: 0.038572 | Val Loss: 0.035668 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [136/150] | Train Loss: 0.038326 | Val Loss: 0.035488 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [137/150] | Train Loss: 0.038224 | Val Loss: 0.035344 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [138/150] | Train Loss: 0.037952 | Val Loss: 0.035263 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [139/150] | Train Loss: 0.037913 | Val Loss: 0.035066 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [140/150] | Train Loss: 0.037747 | Val Loss: 0.034871 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [141/150] | Train Loss: 0.037522 | Val Loss: 0.034609 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [142/150] | Train Loss: 0.037238 | Val Loss: 0.034412 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [143/150] | Train Loss: 0.037157 | Val Loss: 0.034213 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [144/150] | Train Loss: 0.037005 | Val Loss: 0.034107 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [145/150] | Train Loss: 0.036840 | Val Loss: 0.033879 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [146/150] | Train Loss: 0.036622 | Val Loss: 0.033796 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [147/150] | Train Loss: 0.036535 | Val Loss: 0.033589 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [148/150] | Train Loss: 0.036286 | Val Loss: 0.033454 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [149/150] | Train Loss: 0.035988 | Val Loss: 0.033293 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [150/150] | Train Loss: 0.035962 | Val Loss: 0.033245 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
+Optimized batch size: 48
+Epoch [1/150] | Train Loss: 480.952897 | Val Loss: 488.315450 | LR: 1.00e-01 | Patience: 0 | Time: 11.0s
+Epoch [2/150] | Train Loss: 154.053850 | Val Loss: 149.496389 | LR: 1.00e-01 | Patience: 0 | Time: 1.5s
+Epoch [3/150] | Train Loss: 45.724650 | Val Loss: 40.477278 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [4/150] | Train Loss: 18.934629 | Val Loss: 16.547079 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [5/150] | Train Loss: 7.555147 | Val Loss: 7.528699 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [6/150] | Train Loss: 3.832181 | Val Loss: 3.982053 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [7/150] | Train Loss: 2.327570 | Val Loss: 2.369536 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [8/150] | Train Loss: 1.548681 | Val Loss: 1.554795 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [9/150] | Train Loss: 1.076361 | Val Loss: 1.129656 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [10/150] | Train Loss: 0.827277 | Val Loss: 0.871613 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [11/150] | Train Loss: 0.661410 | Val Loss: 0.688091 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [12/150] | Train Loss: 0.496537 | Val Loss: 0.508337 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [13/150] | Train Loss: 0.408286 | Val Loss: 0.409437 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [14/150] | Train Loss: 0.336011 | Val Loss: 0.342593 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [15/150] | Train Loss: 0.273274 | Val Loss: 0.280035 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [16/150] | Train Loss: 0.214355 | Val Loss: 0.218528 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [17/150] | Train Loss: 0.182762 | Val Loss: 0.187553 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [18/150] | Train Loss: 0.151641 | Val Loss: 0.152427 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [19/150] | Train Loss: 0.135305 | Val Loss: 0.137342 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [20/150] | Train Loss: 0.118003 | Val Loss: 0.123051 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [21/150] | Train Loss: 0.106892 | Val Loss: 0.113809 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [22/150] | Train Loss: 0.095689 | Val Loss: 0.101905 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [23/150] | Train Loss: 0.088282 | Val Loss: 0.095818 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [24/150] | Train Loss: 0.080937 | Val Loss: 0.087736 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [25/150] | Train Loss: 0.074173 | Val Loss: 0.080549 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [26/150] | Train Loss: 0.068351 | Val Loss: 0.075086 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [27/150] | Train Loss: 0.062935 | Val Loss: 0.068871 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [28/150] | Train Loss: 0.058762 | Val Loss: 0.065015 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [29/150] | Train Loss: 0.055568 | Val Loss: 0.061816 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [30/150] | Train Loss: 0.052290 | Val Loss: 0.058260 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [31/150] | Train Loss: 0.049903 | Val Loss: 0.055800 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [32/150] | Train Loss: 0.047701 | Val Loss: 0.053128 | LR: 1.00e-01 | Patience: 0 | Time: 1.8s
+Epoch [33/150] | Train Loss: 0.045646 | Val Loss: 0.051760 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [34/150] | Train Loss: 0.043570 | Val Loss: 0.049382 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [35/150] | Train Loss: 0.041876 | Val Loss: 0.047402 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [36/150] | Train Loss: 0.040182 | Val Loss: 0.045999 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [37/150] | Train Loss: 0.038417 | Val Loss: 0.044533 | LR: 1.00e-01 | Patience: 0 | Time: 1.8s
+Epoch [38/150] | Train Loss: 0.037095 | Val Loss: 0.042416 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [39/150] | Train Loss: 0.035575 | Val Loss: 0.040609 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [40/150] | Train Loss: 0.034517 | Val Loss: 0.039449 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [41/150] | Train Loss: 0.033280 | Val Loss: 0.038454 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [42/150] | Train Loss: 0.032164 | Val Loss: 0.036882 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [43/150] | Train Loss: 0.030999 | Val Loss: 0.035610 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [44/150] | Train Loss: 0.030055 | Val Loss: 0.034254 | LR: 1.00e-01 | Patience: 0 | Time: 1.8s
+Epoch [45/150] | Train Loss: 0.029087 | Val Loss: 0.032783 | LR: 1.00e-01 | Patience: 0 | Time: 1.8s
+Epoch [46/150] | Train Loss: 0.027898 | Val Loss: 0.031599 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [47/150] | Train Loss: 0.027007 | Val Loss: 0.030511 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [48/150] | Train Loss: 0.026112 | Val Loss: 0.029689 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [49/150] | Train Loss: 0.025269 | Val Loss: 0.028803 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [50/150] | Train Loss: 0.024457 | Val Loss: 0.027648 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [51/150] | Train Loss: 0.023807 | Val Loss: 0.027190 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [52/150] | Train Loss: 0.023077 | Val Loss: 0.026925 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [53/150] | Train Loss: 0.022229 | Val Loss: 0.025417 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [54/150] | Train Loss: 0.021731 | Val Loss: 0.024852 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [55/150] | Train Loss: 0.021168 | Val Loss: 0.024308 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [56/150] | Train Loss: 0.020681 | Val Loss: 0.023526 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [57/150] | Train Loss: 0.020110 | Val Loss: 0.023236 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [58/150] | Train Loss: 0.019705 | Val Loss: 0.022943 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [59/150] | Train Loss: 0.019296 | Val Loss: 0.022376 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [60/150] | Train Loss: 0.018832 | Val Loss: 0.022079 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [61/150] | Train Loss: 0.018321 | Val Loss: 0.021860 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [62/150] | Train Loss: 0.017894 | Val Loss: 0.021299 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [63/150] | Train Loss: 0.017548 | Val Loss: 0.020948 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [64/150] | Train Loss: 0.017197 | Val Loss: 0.020395 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [65/150] | Train Loss: 0.016809 | Val Loss: 0.019796 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [66/150] | Train Loss: 0.016479 | Val Loss: 0.019591 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [67/150] | Train Loss: 0.016066 | Val Loss: 0.019408 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [68/150] | Train Loss: 0.015652 | Val Loss: 0.018867 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [69/150] | Train Loss: 0.015205 | Val Loss: 0.018012 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [70/150] | Train Loss: 0.014862 | Val Loss: 0.018006 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [71/150] | Train Loss: 0.014595 | Val Loss: 0.017311 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [72/150] | Train Loss: 0.014322 | Val Loss: 0.017306 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [73/150] | Train Loss: 0.014077 | Val Loss: 0.016996 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [74/150] | Train Loss: 0.013825 | Val Loss: 0.016927 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [75/150] | Train Loss: 0.013582 | Val Loss: 0.016626 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [76/150] | Train Loss: 0.013354 | Val Loss: 0.016391 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [77/150] | Train Loss: 0.013171 | Val Loss: 0.016074 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [78/150] | Train Loss: 0.012962 | Val Loss: 0.015750 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [79/150] | Train Loss: 0.012757 | Val Loss: 0.015623 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [80/150] | Train Loss: 0.012584 | Val Loss: 0.015504 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [81/150] | Train Loss: 0.012378 | Val Loss: 0.015211 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [82/150] | Train Loss: 0.012191 | Val Loss: 0.015076 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [83/150] | Train Loss: 0.012036 | Val Loss: 0.014942 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [84/150] | Train Loss: 0.011869 | Val Loss: 0.014726 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [85/150] | Train Loss: 0.011717 | Val Loss: 0.014624 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [86/150] | Train Loss: 0.011542 | Val Loss: 0.014267 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [87/150] | Train Loss: 0.011420 | Val Loss: 0.014181 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [88/150] | Train Loss: 0.011275 | Val Loss: 0.014034 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [89/150] | Train Loss: 0.011124 | Val Loss: 0.014005 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [90/150] | Train Loss: 0.010976 | Val Loss: 0.013933 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [91/150] | Train Loss: 0.010838 | Val Loss: 0.013703 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [92/150] | Train Loss: 0.010683 | Val Loss: 0.013466 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [93/150] | Train Loss: 0.010586 | Val Loss: 0.013381 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [94/150] | Train Loss: 0.010451 | Val Loss: 0.013200 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [95/150] | Train Loss: 0.010308 | Val Loss: 0.013084 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [96/150] | Train Loss: 0.010186 | Val Loss: 0.012930 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [97/150] | Train Loss: 0.010054 | Val Loss: 0.012725 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [98/150] | Train Loss: 0.009939 | Val Loss: 0.012656 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [99/150] | Train Loss: 0.009818 | Val Loss: 0.012501 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [100/150] | Train Loss: 0.009693 | Val Loss: 0.012449 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [101/150] | Train Loss: 0.009578 | Val Loss: 0.012237 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [102/150] | Train Loss: 0.009459 | Val Loss: 0.012014 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [103/150] | Train Loss: 0.009320 | Val Loss: 0.012162 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [104/150] | Train Loss: 0.009232 | Val Loss: 0.011986 | LR: 1.00e-01 | Patience: 1 | Time: 1.6s
+Epoch [105/150] | Train Loss: 0.009123 | Val Loss: 0.011701 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [106/150] | Train Loss: 0.009028 | Val Loss: 0.011649 | LR: 1.00e-01 | Patience: 0 | Time: 1.8s
+Epoch [107/150] | Train Loss: 0.008941 | Val Loss: 0.011587 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [108/150] | Train Loss: 0.008843 | Val Loss: 0.011337 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [109/150] | Train Loss: 0.008739 | Val Loss: 0.011302 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [110/150] | Train Loss: 0.008639 | Val Loss: 0.011129 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [111/150] | Train Loss: 0.008535 | Val Loss: 0.011023 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [112/150] | Train Loss: 0.008450 | Val Loss: 0.011085 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [113/150] | Train Loss: 0.008343 | Val Loss: 0.010916 | LR: 1.00e-01 | Patience: 1 | Time: 1.7s
+Epoch [114/150] | Train Loss: 0.008273 | Val Loss: 0.010861 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [115/150] | Train Loss: 0.008216 | Val Loss: 0.011098 | LR: 1.00e-01 | Patience: 0 | Time: 1.5s
+Epoch [116/150] | Train Loss: 0.008125 | Val Loss: 0.010522 | LR: 1.00e-01 | Patience: 1 | Time: 1.6s
+Epoch [117/150] | Train Loss: 0.008060 | Val Loss: 0.010718 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [118/150] | Train Loss: 0.007985 | Val Loss: 0.010402 | LR: 1.00e-01 | Patience: 1 | Time: 1.7s
+Epoch [119/150] | Train Loss: 0.007903 | Val Loss: 0.010455 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [120/150] | Train Loss: 0.007818 | Val Loss: 0.010284 | LR: 1.00e-01 | Patience: 1 | Time: 1.7s
+Epoch [121/150] | Train Loss: 0.007750 | Val Loss: 0.010356 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [122/150] | Train Loss: 0.007675 | Val Loss: 0.010285 | LR: 1.00e-01 | Patience: 1 | Time: 1.6s
+Epoch [123/150] | Train Loss: 0.007606 | Val Loss: 0.010104 | LR: 1.00e-01 | Patience: 2 | Time: 1.6s
+Epoch [124/150] | Train Loss: 0.007527 | Val Loss: 0.009987 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [125/150] | Train Loss: 0.007432 | Val Loss: 0.009936 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [126/150] | Train Loss: 0.007359 | Val Loss: 0.009878 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [127/150] | Train Loss: 0.007294 | Val Loss: 0.009631 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [128/150] | Train Loss: 0.007226 | Val Loss: 0.009757 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [129/150] | Train Loss: 0.007153 | Val Loss: 0.009672 | LR: 1.00e-01 | Patience: 1 | Time: 1.7s
+Epoch [130/150] | Train Loss: 0.007089 | Val Loss: 0.009617 | LR: 1.00e-01 | Patience: 2 | Time: 1.6s
+Epoch [131/150] | Train Loss: 0.007032 | Val Loss: 0.009608 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [132/150] | Train Loss: 0.006983 | Val Loss: 0.009454 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [133/150] | Train Loss: 0.006927 | Val Loss: 0.009344 | LR: 1.00e-01 | Patience: 0 | Time: 1.8s
+Epoch [134/150] | Train Loss: 0.006872 | Val Loss: 0.009366 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [135/150] | Train Loss: 0.006816 | Val Loss: 0.009382 | LR: 1.00e-01 | Patience: 1 | Time: 1.6s
+Epoch [136/150] | Train Loss: 0.006751 | Val Loss: 0.009252 | LR: 1.00e-01 | Patience: 2 | Time: 1.7s
+Epoch [137/150] | Train Loss: 0.006708 | Val Loss: 0.009559 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [138/150] | Train Loss: 0.006660 | Val Loss: 0.009132 | LR: 1.00e-01 | Patience: 1 | Time: 1.6s
+Epoch [139/150] | Train Loss: 0.006615 | Val Loss: 0.009154 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [140/150] | Train Loss: 0.006564 | Val Loss: 0.009145 | LR: 1.00e-01 | Patience: 1 | Time: 1.7s
+Epoch [141/150] | Train Loss: 0.006522 | Val Loss: 0.009012 | LR: 1.00e-01 | Patience: 2 | Time: 1.6s
+Epoch [142/150] | Train Loss: 0.006487 | Val Loss: 0.008977 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [143/150] | Train Loss: 0.006441 | Val Loss: 0.009147 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [144/150] | Train Loss: 0.006408 | Val Loss: 0.009032 | LR: 1.00e-01 | Patience: 1 | Time: 1.6s
+Epoch [145/150] | Train Loss: 0.006370 | Val Loss: 0.008786 | LR: 1.00e-01 | Patience: 2 | Time: 1.6s
+Epoch [146/150] | Train Loss: 0.006321 | Val Loss: 0.008790 | LR: 1.00e-01 | Patience: 0 | Time: 1.8s
+Epoch [147/150] | Train Loss: 0.006275 | Val Loss: 0.008648 | LR: 1.00e-01 | Patience: 1 | Time: 1.7s
+Epoch [148/150] | Train Loss: 0.006236 | Val Loss: 0.008604 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [149/150] | Train Loss: 0.006202 | Val Loss: 0.008632 | LR: 1.00e-01 | Patience: 0 | Time: 1.6s
+Epoch [150/150] | Train Loss: 0.006174 | Val Loss: 0.008794 | LR: 1.00e-01 | Patience: 1 | Time: 1.6s
 Loss weights: {'multiStep_decodeError': 1000, 'oneStepDecoderError': 0, 'forwardError': 100}
-Starting training for 150 epochs...
-Epoch [1/150] | Train Loss: 0.604640 | Val Loss: 0.097464 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [2/150] | Train Loss: 0.077028 | Val Loss: 0.053116 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [3/150] | Train Loss: 0.041584 | Val Loss: 0.035361 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [4/150] | Train Loss: 0.031587 | Val Loss: 0.029791 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [5/150] | Train Loss: 0.027673 | Val Loss: 0.027426 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [6/150] | Train Loss: 0.024657 | Val Loss: 0.025457 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [7/150] | Train Loss: 0.022801 | Val Loss: 0.023942 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [8/150] | Train Loss: 0.021540 | Val Loss: 0.022722 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [9/150] | Train Loss: 0.020605 | Val Loss: 0.021795 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [10/150] | Train Loss: 0.019867 | Val Loss: 0.021038 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [11/150] | Train Loss: 0.019292 | Val Loss: 0.020427 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [12/150] | Train Loss: 0.018816 | Val Loss: 0.019829 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [13/150] | Train Loss: 0.018454 | Val Loss: 0.019306 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [14/150] | Train Loss: 0.018067 | Val Loss: 0.018803 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [15/150] | Train Loss: 0.017725 | Val Loss: 0.018374 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [16/150] | Train Loss: 0.017325 | Val Loss: 0.017988 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [17/150] | Train Loss: 0.016878 | Val Loss: 0.017615 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [18/150] | Train Loss: 0.016463 | Val Loss: 0.017300 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [19/150] | Train Loss: 0.016024 | Val Loss: 0.016993 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [20/150] | Train Loss: 0.015576 | Val Loss: 0.016703 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [21/150] | Train Loss: 0.015140 | Val Loss: 0.016412 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [22/150] | Train Loss: 0.014808 | Val Loss: 0.016133 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [23/150] | Train Loss: 0.014508 | Val Loss: 0.015899 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [24/150] | Train Loss: 0.014247 | Val Loss: 0.015652 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [25/150] | Train Loss: 0.014002 | Val Loss: 0.015422 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [26/150] | Train Loss: 0.013777 | Val Loss: 0.015202 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [27/150] | Train Loss: 0.013561 | Val Loss: 0.015010 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [28/150] | Train Loss: 0.013358 | Val Loss: 0.014820 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [29/150] | Train Loss: 0.013170 | Val Loss: 0.014645 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [30/150] | Train Loss: 0.013025 | Val Loss: 0.014476 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [31/150] | Train Loss: 0.012870 | Val Loss: 0.014313 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [32/150] | Train Loss: 0.012740 | Val Loss: 0.014151 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [33/150] | Train Loss: 0.012603 | Val Loss: 0.013994 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [34/150] | Train Loss: 0.012465 | Val Loss: 0.013833 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [35/150] | Train Loss: 0.012331 | Val Loss: 0.013673 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [36/150] | Train Loss: 0.012208 | Val Loss: 0.013521 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [37/150] | Train Loss: 0.012085 | Val Loss: 0.013372 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [38/150] | Train Loss: 0.011963 | Val Loss: 0.013243 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [39/150] | Train Loss: 0.011849 | Val Loss: 0.013113 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [40/150] | Train Loss: 0.011737 | Val Loss: 0.012992 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [41/150] | Train Loss: 0.011630 | Val Loss: 0.012881 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [42/150] | Train Loss: 0.011518 | Val Loss: 0.012772 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [43/150] | Train Loss: 0.011415 | Val Loss: 0.012666 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [44/150] | Train Loss: 0.011320 | Val Loss: 0.012574 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [45/150] | Train Loss: 0.011225 | Val Loss: 0.012486 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [46/150] | Train Loss: 0.011128 | Val Loss: 0.012400 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [47/150] | Train Loss: 0.011035 | Val Loss: 0.012318 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [48/150] | Train Loss: 0.010948 | Val Loss: 0.012235 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [49/150] | Train Loss: 0.010863 | Val Loss: 0.012150 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [50/150] | Train Loss: 0.010781 | Val Loss: 0.012072 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [51/150] | Train Loss: 0.010702 | Val Loss: 0.011994 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [52/150] | Train Loss: 0.010620 | Val Loss: 0.011920 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [53/150] | Train Loss: 0.010543 | Val Loss: 0.011848 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [54/150] | Train Loss: 0.010466 | Val Loss: 0.011780 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [55/150] | Train Loss: 0.010392 | Val Loss: 0.011714 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [56/150] | Train Loss: 0.010321 | Val Loss: 0.011652 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [57/150] | Train Loss: 0.010243 | Val Loss: 0.011592 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [58/150] | Train Loss: 0.010170 | Val Loss: 0.011534 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [59/150] | Train Loss: 0.010103 | Val Loss: 0.011476 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [60/150] | Train Loss: 0.010038 | Val Loss: 0.011420 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [61/150] | Train Loss: 0.009970 | Val Loss: 0.011363 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [62/150] | Train Loss: 0.009906 | Val Loss: 0.011310 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [63/150] | Train Loss: 0.009847 | Val Loss: 0.011260 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [64/150] | Train Loss: 0.009789 | Val Loss: 0.011208 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [65/150] | Train Loss: 0.009732 | Val Loss: 0.011158 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [66/150] | Train Loss: 0.009675 | Val Loss: 0.011112 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [67/150] | Train Loss: 0.009619 | Val Loss: 0.011066 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [68/150] | Train Loss: 0.009570 | Val Loss: 0.011021 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [69/150] | Train Loss: 0.009519 | Val Loss: 0.010977 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [70/150] | Train Loss: 0.009470 | Val Loss: 0.010934 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [71/150] | Train Loss: 0.009421 | Val Loss: 0.010893 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [72/150] | Train Loss: 0.009374 | Val Loss: 0.010853 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [73/150] | Train Loss: 0.009327 | Val Loss: 0.010813 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [74/150] | Train Loss: 0.009285 | Val Loss: 0.010775 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [75/150] | Train Loss: 0.009241 | Val Loss: 0.010737 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [76/150] | Train Loss: 0.009197 | Val Loss: 0.010698 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [77/150] | Train Loss: 0.009155 | Val Loss: 0.010661 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [78/150] | Train Loss: 0.009113 | Val Loss: 0.010624 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [79/150] | Train Loss: 0.009073 | Val Loss: 0.010587 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [80/150] | Train Loss: 0.009034 | Val Loss: 0.010553 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [81/150] | Train Loss: 0.008995 | Val Loss: 0.010519 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [82/150] | Train Loss: 0.008955 | Val Loss: 0.010486 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [83/150] | Train Loss: 0.008927 | Val Loss: 0.010452 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [84/150] | Train Loss: 0.008891 | Val Loss: 0.010423 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [85/150] | Train Loss: 0.008845 | Val Loss: 0.010391 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [86/150] | Train Loss: 0.008810 | Val Loss: 0.010360 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [87/150] | Train Loss: 0.008775 | Val Loss: 0.010330 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [88/150] | Train Loss: 0.008740 | Val Loss: 0.010301 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [89/150] | Train Loss: 0.008713 | Val Loss: 0.010270 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [90/150] | Train Loss: 0.008678 | Val Loss: 0.010245 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [91/150] | Train Loss: 0.008640 | Val Loss: 0.010218 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [92/150] | Train Loss: 0.008609 | Val Loss: 0.010191 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [93/150] | Train Loss: 0.008577 | Val Loss: 0.010165 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [94/150] | Train Loss: 0.008544 | Val Loss: 0.010138 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [95/150] | Train Loss: 0.008519 | Val Loss: 0.010111 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [96/150] | Train Loss: 0.008489 | Val Loss: 0.010088 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [97/150] | Train Loss: 0.008458 | Val Loss: 0.010064 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [98/150] | Train Loss: 0.008431 | Val Loss: 0.010039 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [99/150] | Train Loss: 0.008411 | Val Loss: 0.010015 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [100/150] | Train Loss: 0.008404 | Val Loss: 0.009992 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [101/150] | Train Loss: 0.008358 | Val Loss: 0.009969 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [102/150] | Train Loss: 0.008329 | Val Loss: 0.009947 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [103/150] | Train Loss: 0.008303 | Val Loss: 0.009924 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [104/150] | Train Loss: 0.008277 | Val Loss: 0.009903 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [105/150] | Train Loss: 0.008260 | Val Loss: 0.009881 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [106/150] | Train Loss: 0.008245 | Val Loss: 0.009860 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [107/150] | Train Loss: 0.008211 | Val Loss: 0.009841 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [108/150] | Train Loss: 0.008186 | Val Loss: 0.009820 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [109/150] | Train Loss: 0.008164 | Val Loss: 0.009800 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [110/150] | Train Loss: 0.008147 | Val Loss: 0.009780 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [111/150] | Train Loss: 0.008122 | Val Loss: 0.009755 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [112/150] | Train Loss: 0.008098 | Val Loss: 0.009742 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [113/150] | Train Loss: 0.008082 | Val Loss: 0.009723 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [114/150] | Train Loss: 0.008057 | Val Loss: 0.009706 | LR: 2.00e-03 | Patience: 0 | Time: 14.4s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [115/150] | Train Loss: 0.008036 | Val Loss: 0.009688 | LR: 2.00e-03 | Patience: 0 | Time: 14.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [116/150] | Train Loss: 0.008016 | Val Loss: 0.009671 | LR: 2.00e-03 | Patience: 0 | Time: 14.5s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [117/150] | Train Loss: 0.008001 | Val Loss: 0.009653 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [118/150] | Train Loss: 0.007988 | Val Loss: 0.009636 | LR: 2.00e-03 | Patience: 0 | Time: 15.2s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [119/150] | Train Loss: 0.007957 | Val Loss: 0.009619 | LR: 2.00e-03 | Patience: 0 | Time: 16.0s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [120/150] | Train Loss: 0.007937 | Val Loss: 0.009602 | LR: 2.00e-03 | Patience: 0 | Time: 16.2s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [121/150] | Train Loss: 0.007934 | Val Loss: 0.009583 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [122/150] | Train Loss: 0.007897 | Val Loss: 0.009566 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [123/150] | Train Loss: 0.007890 | Val Loss: 0.009549 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [124/150] | Train Loss: 0.007872 | Val Loss: 0.009532 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [125/150] | Train Loss: 0.007841 | Val Loss: 0.009514 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [126/150] | Train Loss: 0.007829 | Val Loss: 0.009496 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [127/150] | Train Loss: 0.007811 | Val Loss: 0.009478 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [128/150] | Train Loss: 0.007800 | Val Loss: 0.009460 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [129/150] | Train Loss: 0.007770 | Val Loss: 0.009445 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [130/150] | Train Loss: 0.007769 | Val Loss: 0.009427 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [131/150] | Train Loss: 0.007756 | Val Loss: 0.009410 | LR: 2.00e-03 | Patience: 0 | Time: 15.6s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [132/150] | Train Loss: 0.007738 | Val Loss: 0.009393 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [133/150] | Train Loss: 0.007714 | Val Loss: 0.009378 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [134/150] | Train Loss: 0.007695 | Val Loss: 0.009362 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [135/150] | Train Loss: 0.007691 | Val Loss: 0.009345 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [136/150] | Train Loss: 0.007662 | Val Loss: 0.009330 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [137/150] | Train Loss: 0.007648 | Val Loss: 0.009313 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [138/150] | Train Loss: 0.007632 | Val Loss: 0.009297 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [139/150] | Train Loss: 0.007617 | Val Loss: 0.009281 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [140/150] | Train Loss: 0.007602 | Val Loss: 0.009266 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [141/150] | Train Loss: 0.007587 | Val Loss: 0.009250 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [142/150] | Train Loss: 0.007571 | Val Loss: 0.009235 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [143/150] | Train Loss: 0.007563 | Val Loss: 0.009219 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [144/150] | Train Loss: 0.007544 | Val Loss: 0.009206 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [145/150] | Train Loss: 0.007529 | Val Loss: 0.009190 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [146/150] | Train Loss: 0.007515 | Val Loss: 0.009175 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [147/150] | Train Loss: 0.007501 | Val Loss: 0.009161 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [148/150] | Train Loss: 0.007487 | Val Loss: 0.009146 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [149/150] | Train Loss: 0.007473 | Val Loss: 0.009131 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Epoch [150/150] | Train Loss: 0.007458 | Val Loss: 0.009117 | LR: 2.00e-03 | Patience: 0 | Time: 15.7s
-Checkpoint saved: checkpoints/best_model.pth
-Training completed. Best validation loss: 0.009117
+Optimized batch size: 48
+Epoch [1/150] | Train Loss: 0.008889 | Val Loss: 0.011507 | LR: 1.00e-01 | Patience: 0 | Time: 1.7s
+Epoch [2/150] | Train Loss: 0.008691 | Val Loss: 0.011281 | LR: 1.00e-01 | Patience: 1 | Time: 1.6s
+Epoch [3/150] | Train Loss: 0.008457 | Val Loss: 0.010999 | LR: 3.00e-02 | Patience: 2 | Time: 1.7s
+Epoch [4/150] | Train Loss: 0.008221 | Val Loss: 0.010710 | LR: 3.00e-02 | Patience: 3 | Time: 1.6s
+Epoch [5/150] | Train Loss: 0.007899 | Val Loss: 0.010211 | LR: 3.00e-02 | Patience: 4 | Time: 1.6s
+Epoch [6/150] | Train Loss: 0.007569 | Val Loss: 0.009854 | LR: 3.00e-02 | Patience: 5 | Time: 1.6s
+Epoch [7/150] | Train Loss: 0.007363 | Val Loss: 0.009631 | LR: 9.00e-03 | Patience: 6 | Time: 1.7s
+Epoch [8/150] | Train Loss: 0.007159 | Val Loss: 0.009424 | LR: 9.00e-03 | Patience: 7 | Time: 1.6s
+Early stopping triggered after 8 epochs
+Training completed. Best validation loss: 0.008604

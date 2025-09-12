@@ -116,9 +116,6 @@ class BridgeNetwork(nn.Module):
         self.affine_struct = affine_struct
 
         self.bridge0 = nn.Linear(state_size + N_U, n_neurons)
-        self.hidden_layers = nn.ModuleList(
-            [nn.Linear(n_neurons, n_neurons) for _ in range(n_layer - 1)]
-        )
         self.bridge_bias = nn.Linear(n_neurons, state_size)
         if affine_struct:
             self.bridge_f = nn.Linear(n_neurons, state_size * (state_size + N_U))
@@ -132,8 +129,6 @@ class BridgeNetwork(nn.Module):
             [inputs_state.float().to(device), inputs_novelU.float().to(device)], dim=-1
         ).to(device)
         x = self.bridge0(input_concat)
-        for layer in self.hidden_layers:
-            x = layer(x)
         bias = self.bridge_bias(x)
         if self.affine_struct:
             AB = self.bridge_f(x).view(-1, self.state_size, self.state_size + self.N_U)

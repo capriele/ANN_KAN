@@ -424,12 +424,11 @@ class AdvAutoencoder(nn.Module):
 
             # Auto-detect optimal number of workers if not specified
             if num_workers is None:
-                cpu_count = psutil.cpu_count(logical=False)  # Physical cores
-                logical_count = psutil.cpu_count(logical=True)  # Logical cores
-                num_workers = max(1, min(logical_count - 2, int(logical_count * 0.75)))
-                print(
-                    f"Auto-detected {num_workers} workers (Physical cores: {cpu_count}, Logical: {logical_count})"
-                )
+                num_workers = min(4, torch.get_num_threads())
+                # cpu_count = psutil.cpu_count(logical=False)  # Physical cores
+                # logical_count = psutil.cpu_count(logical=True)  # Logical cores
+                # num_workers = max(1, min(logical_count - 2, int(logical_count * 0.75)))
+                print(f"Auto-detected {num_workers} workers")
 
             # Prepare data with parallel processing
             print("Preparing dataset with parallel processing...")
@@ -467,6 +466,10 @@ class AdvAutoencoder(nn.Module):
             convEncoder = convEncoder.to(device)
             outputEncoder = outputEncoder.to(device)
             bridgeNetwork = bridgeNetwork.to(device)
+            if device.type == "cpu":
+                self.model = self._optimize_model_for_cpu(
+                    self.model, outputVector.shape, inputVector.shape
+                )
 
             # Mixed precision setup for GPU
             scaler = torch.cuda.amp.GradScaler(
@@ -710,6 +713,7 @@ class AdvAutoencoder(nn.Module):
     def _optimize_model_for_cpu(self, model, sample_y_shape, sample_u_shape):
         """Apply CPU-specific model optimizations."""
         try:
+            self._setup_cpu_optimizations()
             # Option 1: Try PyTorch 2.0+ compilation first (most performant)
             if hasattr(torch, "compile"):
                 try:
@@ -904,6 +908,10 @@ class AdvAutoencoder(nn.Module):
             convEncoder = convEncoder.to(device)
             outputEncoder = outputEncoder.to(device)
             bridgeNetwork = bridgeNetwork.to(device)
+            if device.type == "cpu":
+                self.model = self._optimize_model_for_cpu(
+                    self.model, outputVector.shape, inputVector.shape
+                )
 
             # Store models (these variables are updated during training => store best model)
             self.model = model
@@ -970,13 +978,13 @@ class AdvAutoencoder(nn.Module):
             val_dataset = TensorDataset(val_input_y, val_input_u, val_targets)
 
             # Use num_workers for faster data loading (adjust based on your system)
-            # num_workers = min(4, torch.get_num_threads())
+            num_workers = min(4, torch.get_num_threads())
 
             train_loader = DataLoader(
                 train_dataset,
                 batch_size=self.batch_size,
                 shuffle=False,
-                # num_workers=num_workers,
+                num_workers=num_workers,
                 # pin_memory=True if device.type == "cuda" else False,
                 drop_last=True,  # Helps with batch norm stability
             )
@@ -985,7 +993,7 @@ class AdvAutoencoder(nn.Module):
                 val_dataset,
                 batch_size=self.batch_size,
                 shuffle=False,
-                # num_workers=num_workers,
+                num_workers=num_workers,
                 # pin_memory=True if device.type == "cuda" else False,
             )
 

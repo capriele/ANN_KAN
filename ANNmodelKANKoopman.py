@@ -43,7 +43,7 @@ class EncoderNetwork(nn.Module):
             noise_scale=noise_scale,
             seed=seed,
             auto_save=False,
-            symbolic_enabled=True,
+            symbolic_enabled=False,
         )
         self.kan_network.speed(compile=True)
 
