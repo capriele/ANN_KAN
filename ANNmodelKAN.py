@@ -83,7 +83,7 @@ class DecoderNetwork(nn.Module):
         self.output_window_len = output_window_len
         self.N_Y = N_Y
         self.affine_struct = affine_struct
-        width = [state_size] + [n_neurons] * (n_layer)
+        width = [state_size] + [n_neurons] * (n_layer - 1)
         out_dim = (
             output_window_len * state_size * N_Y
             if affine_struct
