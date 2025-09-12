@@ -1,0 +1,377 @@
+Epochs 150
+Parameters ['main.py', '1', '5', '1', '1', '6', '10', '1', '0', '0', '1', '0', '0', 'NLTankNLF5Affine']
+Option.fitHorizon = 5
+Option.dynamicalSystemSelector = 1
+Option.nonLinearInputChar = 1
+Option.stateSize = 6
+Option.n_a = 10
+Option.affineStruct = 1
+0.0
+Enable KAN model
+Option.modelKind = kan
+Option.modelSelector = 1
+Option.testName = NLTankNLF5Affine
+TWOTANKS
+a
+..a
+.(20000, 1)
+(20000, 1)
+(1000, 1)
+(1000, 1)
+13
+inputU shape: torch.Size([19986, 15, 1])
+tensor([[[ 1.6121],
+         [ 1.6175],
+         [ 1.5892],
+         ...,
+         [-0.5431],
+         [-0.5300],
+         [-0.5459]],
+
+        [[ 1.6175],
+         [ 1.5892],
+         [ 1.5967],
+         ...,
+         [-0.5300],
+         [-0.5459],
+         [-1.1225]],
+
+        [[ 1.5892],
+         [ 1.5967],
+         [ 1.6084],
+         ...,
+         [-0.5459],
+         [-1.1225],
+         [-1.1064]],
+
+        ...,
+
+        [[-0.9315],
+         [-0.9887],
+         [-0.8375],
+         ...,
+         [ 0.5140],
+         [ 0.5096],
+         [ 0.5318]],
+
+        [[-0.9887],
+         [-0.8375],
+         [-0.8594],
+         ...,
+         [ 0.5096],
+         [ 0.5318],
+         [ 0.5408]],
+
+        [[-0.8375],
+         [-0.8594],
+         [-0.8676],
+         ...,
+         [ 0.5318],
+         [ 0.5408],
+         [ 0.5356]]], dtype=torch.float64)
+inputY shape: torch.Size([19986, 15, 1])
+tensor([[[-0.2801],
+         [-0.3647],
+         [-0.3607],
+         ...,
+         [ 0.4034],
+         [ 0.2850],
+         [ 0.1771]],
+
+        [[-0.3647],
+         [-0.3607],
+         [-0.1939],
+         ...,
+         [ 0.2850],
+         [ 0.1771],
+         [ 0.0080]],
+
+        [[-0.3607],
+         [-0.1939],
+         [-0.0402],
+         ...,
+         [ 0.1771],
+         [ 0.0080],
+         [-0.1267]],
+
+        ...,
+
+        [[-0.8400],
+         [-0.9462],
+         [-1.0655],
+         ...,
+         [-0.6202],
+         [-0.5733],
+         [-0.5190]],
+
+        [[-0.9462],
+         [-1.0655],
+         [-1.0576],
+         ...,
+         [-0.5733],
+         [-0.5190],
+         [-0.4551]],
+
+        [[-1.0655],
+         [-1.0576],
+         [-1.0013],
+         ...,
+         [-0.5190],
+         [-0.4551],
+         [-0.3633]]], dtype=torch.float64)
+trainModel
+Using device: cpu
+Auto-detected 48 workers (Physical cores: 32, Logical: 64)
+Preparing dataset with parallel processing...
+13
+Initializing new model...
+
+ANNModel(
+  (conv_encoder): EncoderNetwork(
+    (kan_network): MultKAN(
+      (act_fun): ModuleList(
+        (0-2): 3 x KANLayer(
+          (base_fun): SiLU()
+        )
+      )
+      (base_fun): SiLU()
+      (symbolic_fun): ModuleList(
+        (0-2): 3 x Symbolic_KANLayer()
+      )
+    )
+  )
+  (output_decoder): DecoderNetwork(
+    (kan_network): MultKAN(
+      (act_fun): ModuleList(
+        (0-3): 4 x KANLayer(
+          (base_fun): SiLU()
+        )
+      )
+      (base_fun): SiLU()
+      (symbolic_fun): ModuleList(
+        (0-3): 4 x Symbolic_KANLayer()
+      )
+    )
+  )
+  (bridge_network): BridgeNetwork(
+    (kan_network): MultKAN(
+      (act_fun): ModuleList(
+        (0-2): 3 x KANLayer(
+          (base_fun): SiLU()
+        )
+      )
+      (base_fun): SiLU()
+      (symbolic_fun): ModuleList(
+        (0-2): 3 x Symbolic_KANLayer()
+      )
+    )
+    (bridge_bias): Linear(in_features=30, out_features=6, bias=True)
+    (bridge_f): Linear(in_features=30, out_features=42, bias=True)
+  )
+)
+Total parameters: 101,916, Trainable: 85,908
+Starting training for 150 epochs with 48 workers...
+Loss weights: {'multiStep_decodeError': 100, 'oneStepDecoderError': 1000, 'forwardError': 3}
+Optimized batch size: 48
+Epoch [1/150] | Train Loss: 44.934288 | Val Loss: 44.864758 | LR: 1.00e-01 | Patience: 0 | Time: 120.8s
+Epoch [2/150] | Train Loss: 8.039724 | Val Loss: 7.786000 | LR: 1.00e-01 | Patience: 0 | Time: 112.8s
+Epoch [3/150] | Train Loss: 3.990592 | Val Loss: 3.897957 | LR: 1.00e-01 | Patience: 0 | Time: 110.6s
+Epoch [4/150] | Train Loss: 2.378338 | Val Loss: 2.233418 | LR: 1.00e-01 | Patience: 0 | Time: 113.6s
+Epoch [5/150] | Train Loss: 1.592088 | Val Loss: 1.511587 | LR: 1.00e-01 | Patience: 0 | Time: 111.5s
+Epoch [6/150] | Train Loss: 1.242709 | Val Loss: 1.167844 | LR: 1.00e-01 | Patience: 0 | Time: 112.9s
+Epoch [7/150] | Train Loss: 1.042168 | Val Loss: 0.979185 | LR: 1.00e-01 | Patience: 0 | Time: 112.7s
+Epoch [8/150] | Train Loss: 0.910352 | Val Loss: 0.853590 | LR: 1.00e-01 | Patience: 0 | Time: 115.7s
+Epoch [9/150] | Train Loss: 0.836943 | Val Loss: 0.787304 | LR: 1.00e-01 | Patience: 0 | Time: 111.2s
+Epoch [10/150] | Train Loss: 0.768535 | Val Loss: 0.717369 | LR: 1.00e-01 | Patience: 0 | Time: 118.6s
+Epoch [11/150] | Train Loss: 0.718320 | Val Loss: 0.669872 | LR: 1.00e-01 | Patience: 0 | Time: 116.0s
+Epoch [12/150] | Train Loss: 0.677890 | Val Loss: 0.640971 | LR: 1.00e-01 | Patience: 0 | Time: 113.5s
+Epoch [13/150] | Train Loss: 0.650051 | Val Loss: 0.618985 | LR: 1.00e-01 | Patience: 0 | Time: 119.6s
+Epoch [14/150] | Train Loss: 0.617443 | Val Loss: 0.592143 | LR: 1.00e-01 | Patience: 0 | Time: 112.0s
+Epoch [15/150] | Train Loss: 0.598828 | Val Loss: 0.573261 | LR: 1.00e-01 | Patience: 0 | Time: 111.5s
+Epoch [16/150] | Train Loss: 0.578585 | Val Loss: 0.555261 | LR: 1.00e-01 | Patience: 0 | Time: 116.0s
+Epoch [17/150] | Train Loss: 0.560167 | Val Loss: 0.532564 | LR: 1.00e-01 | Patience: 0 | Time: 117.7s
+Epoch [18/150] | Train Loss: 0.549187 | Val Loss: 0.520218 | LR: 1.00e-01 | Patience: 0 | Time: 114.0s
+Epoch [19/150] | Train Loss: 0.536125 | Val Loss: 0.511240 | LR: 1.00e-01 | Patience: 0 | Time: 113.9s
+Epoch [20/150] | Train Loss: 0.522435 | Val Loss: 0.503733 | LR: 1.00e-01 | Patience: 0 | Time: 118.8s
+Epoch [21/150] | Train Loss: 0.511731 | Val Loss: 0.496623 | LR: 1.00e-01 | Patience: 0 | Time: 113.7s
+Epoch [22/150] | Train Loss: 0.500519 | Val Loss: 0.486206 | LR: 1.00e-01 | Patience: 0 | Time: 119.1s
+Epoch [23/150] | Train Loss: 0.494243 | Val Loss: 0.481781 | LR: 1.00e-01 | Patience: 0 | Time: 116.1s
+Epoch [24/150] | Train Loss: 0.486915 | Val Loss: 0.473413 | LR: 1.00e-01 | Patience: 0 | Time: 111.4s
+Epoch [25/150] | Train Loss: 0.481546 | Val Loss: 0.468918 | LR: 1.00e-01 | Patience: 0 | Time: 113.2s
+Epoch [26/150] | Train Loss: 0.472884 | Val Loss: 0.461858 | LR: 1.00e-01 | Patience: 0 | Time: 118.3s
+Epoch [27/150] | Train Loss: 0.466882 | Val Loss: 0.456568 | LR: 1.00e-01 | Patience: 0 | Time: 113.3s
+Epoch [28/150] | Train Loss: 0.461208 | Val Loss: 0.449989 | LR: 1.00e-01 | Patience: 0 | Time: 115.1s
+Epoch [29/150] | Train Loss: 0.455387 | Val Loss: 0.443995 | LR: 1.00e-01 | Patience: 0 | Time: 118.9s
+Epoch [30/150] | Train Loss: 0.449208 | Val Loss: 0.438174 | LR: 1.00e-01 | Patience: 0 | Time: 113.8s
+Epoch [31/150] | Train Loss: 0.443958 | Val Loss: 0.432198 | LR: 1.00e-01 | Patience: 0 | Time: 114.2s
+Epoch [32/150] | Train Loss: 0.439582 | Val Loss: 0.428034 | LR: 1.00e-01 | Patience: 0 | Time: 112.8s
+Epoch [33/150] | Train Loss: 0.435368 | Val Loss: 0.423028 | LR: 1.00e-01 | Patience: 0 | Time: 114.0s
+Epoch [34/150] | Train Loss: 0.431705 | Val Loss: 0.418880 | LR: 1.00e-01 | Patience: 0 | Time: 115.4s
+Epoch [35/150] | Train Loss: 0.426689 | Val Loss: 0.415725 | LR: 1.00e-01 | Patience: 0 | Time: 119.1s
+Epoch [36/150] | Train Loss: 0.422415 | Val Loss: 0.413022 | LR: 1.00e-01 | Patience: 0 | Time: 115.4s
+Epoch [37/150] | Train Loss: 0.419175 | Val Loss: 0.410294 | LR: 1.00e-01 | Patience: 0 | Time: 119.4s
+Epoch [38/150] | Train Loss: 0.414423 | Val Loss: 0.405235 | LR: 1.00e-01 | Patience: 0 | Time: 117.7s
+Epoch [39/150] | Train Loss: 0.411205 | Val Loss: 0.403192 | LR: 1.00e-01 | Patience: 0 | Time: 114.3s
+Epoch [40/150] | Train Loss: 0.406678 | Val Loss: 0.397842 | LR: 1.00e-01 | Patience: 0 | Time: 112.9s
+Epoch [41/150] | Train Loss: 0.403826 | Val Loss: 0.394847 | LR: 1.00e-01 | Patience: 0 | Time: 113.1s
+Epoch [42/150] | Train Loss: 0.400978 | Val Loss: 0.391916 | LR: 1.00e-01 | Patience: 0 | Time: 116.2s
+Epoch [43/150] | Train Loss: 0.397425 | Val Loss: 0.390110 | LR: 1.00e-01 | Patience: 0 | Time: 119.3s
+Epoch [44/150] | Train Loss: 0.394776 | Val Loss: 0.387586 | LR: 1.00e-01 | Patience: 0 | Time: 113.7s
+Epoch [45/150] | Train Loss: 0.392247 | Val Loss: 0.385357 | LR: 1.00e-01 | Patience: 0 | Time: 111.5s
+Epoch [46/150] | Train Loss: 0.389418 | Val Loss: 0.382306 | LR: 1.00e-01 | Patience: 0 | Time: 111.7s
+Epoch [47/150] | Train Loss: 0.387110 | Val Loss: 0.380030 | LR: 1.00e-01 | Patience: 0 | Time: 112.6s
+Epoch [48/150] | Train Loss: 0.384274 | Val Loss: 0.376484 | LR: 1.00e-01 | Patience: 0 | Time: 113.1s
+Epoch [49/150] | Train Loss: 0.381067 | Val Loss: 0.373685 | LR: 1.00e-01 | Patience: 0 | Time: 114.1s
+Epoch [50/150] | Train Loss: 0.377794 | Val Loss: 0.370323 | LR: 1.00e-01 | Patience: 0 | Time: 115.0s
+Epoch [51/150] | Train Loss: 0.374692 | Val Loss: 0.367723 | LR: 1.00e-01 | Patience: 0 | Time: 113.1s
+Epoch [52/150] | Train Loss: 0.372117 | Val Loss: 0.365217 | LR: 1.00e-01 | Patience: 0 | Time: 114.9s
+Epoch [53/150] | Train Loss: 0.368883 | Val Loss: 0.361270 | LR: 1.00e-01 | Patience: 0 | Time: 112.5s
+Epoch [54/150] | Train Loss: 0.366692 | Val Loss: 0.359532 | LR: 1.00e-01 | Patience: 0 | Time: 117.8s
+Epoch [55/150] | Train Loss: 0.364206 | Val Loss: 0.358001 | LR: 1.00e-01 | Patience: 0 | Time: 113.5s
+Epoch [56/150] | Train Loss: 0.361019 | Val Loss: 0.354384 | LR: 1.00e-01 | Patience: 0 | Time: 117.3s
+Epoch [57/150] | Train Loss: 0.358840 | Val Loss: 0.352316 | LR: 1.00e-01 | Patience: 0 | Time: 119.2s
+Epoch [58/150] | Train Loss: 0.356502 | Val Loss: 0.349294 | LR: 1.00e-01 | Patience: 0 | Time: 119.0s
+Epoch [59/150] | Train Loss: 0.354380 | Val Loss: 0.347550 | LR: 1.00e-01 | Patience: 0 | Time: 114.1s
+Epoch [60/150] | Train Loss: 0.352351 | Val Loss: 0.346059 | LR: 1.00e-01 | Patience: 0 | Time: 112.9s
+Epoch [61/150] | Train Loss: 0.349721 | Val Loss: 0.343431 | LR: 1.00e-01 | Patience: 0 | Time: 118.1s
+Epoch [62/150] | Train Loss: 0.347122 | Val Loss: 0.341160 | LR: 1.00e-01 | Patience: 0 | Time: 112.8s
+Epoch [63/150] | Train Loss: 0.344743 | Val Loss: 0.339337 | LR: 1.00e-01 | Patience: 0 | Time: 115.7s
+Epoch [64/150] | Train Loss: 0.342214 | Val Loss: 0.337642 | LR: 1.00e-01 | Patience: 0 | Time: 114.7s
+Epoch [65/150] | Train Loss: 0.339657 | Val Loss: 0.335711 | LR: 1.00e-01 | Patience: 0 | Time: 119.0s
+Epoch [66/150] | Train Loss: 0.337621 | Val Loss: 0.334407 | LR: 1.00e-01 | Patience: 0 | Time: 112.6s
+Epoch [67/150] | Train Loss: 0.335784 | Val Loss: 0.332235 | LR: 1.00e-01 | Patience: 0 | Time: 115.0s
+Epoch [68/150] | Train Loss: 0.333382 | Val Loss: 0.329323 | LR: 1.00e-01 | Patience: 0 | Time: 117.9s
+Epoch [69/150] | Train Loss: 0.331142 | Val Loss: 0.327497 | LR: 1.00e-01 | Patience: 0 | Time: 118.1s
+Epoch [70/150] | Train Loss: 0.329382 | Val Loss: 0.326569 | LR: 1.00e-01 | Patience: 0 | Time: 117.3s
+Epoch [71/150] | Train Loss: 0.327489 | Val Loss: 0.325076 | LR: 1.00e-01 | Patience: 0 | Time: 113.5s
+Epoch [72/150] | Train Loss: 0.325797 | Val Loss: 0.323861 | LR: 1.00e-01 | Patience: 0 | Time: 113.4s
+Epoch [73/150] | Train Loss: 0.324147 | Val Loss: 0.323183 | LR: 1.00e-01 | Patience: 0 | Time: 113.0s
+Epoch [74/150] | Train Loss: 0.322774 | Val Loss: 0.322810 | LR: 1.00e-01 | Patience: 0 | Time: 114.0s
+Epoch [75/150] | Train Loss: 0.321285 | Val Loss: 0.322040 | LR: 1.00e-01 | Patience: 0 | Time: 120.7s
+Epoch [76/150] | Train Loss: 0.319675 | Val Loss: 0.320759 | LR: 1.00e-01 | Patience: 0 | Time: 117.7s
+Epoch [77/150] | Train Loss: 0.318553 | Val Loss: 0.319600 | LR: 1.00e-01 | Patience: 0 | Time: 115.1s
+Epoch [78/150] | Train Loss: 0.317459 | Val Loss: 0.318672 | LR: 1.00e-01 | Patience: 0 | Time: 114.2s
+Epoch [79/150] | Train Loss: 0.316250 | Val Loss: 0.316969 | LR: 1.00e-01 | Patience: 0 | Time: 113.9s
+Epoch [80/150] | Train Loss: 0.314846 | Val Loss: 0.315458 | LR: 1.00e-01 | Patience: 0 | Time: 119.7s
+Epoch [81/150] | Train Loss: 0.313714 | Val Loss: 0.315302 | LR: 1.00e-01 | Patience: 0 | Time: 115.1s
+Epoch [82/150] | Train Loss: 0.312295 | Val Loss: 0.314349 | LR: 1.00e-01 | Patience: 0 | Time: 119.2s
+Epoch [83/150] | Train Loss: 0.311166 | Val Loss: 0.313526 | LR: 1.00e-01 | Patience: 0 | Time: 118.9s
+Epoch [84/150] | Train Loss: 0.309840 | Val Loss: 0.312566 | LR: 1.00e-01 | Patience: 0 | Time: 114.6s
+Epoch [85/150] | Train Loss: 0.308593 | Val Loss: 0.310958 | LR: 1.00e-01 | Patience: 0 | Time: 114.7s
+Epoch [86/150] | Train Loss: 0.307319 | Val Loss: 0.309393 | LR: 1.00e-01 | Patience: 0 | Time: 116.1s
+Epoch [87/150] | Train Loss: 0.306097 | Val Loss: 0.308801 | LR: 1.00e-01 | Patience: 0 | Time: 115.6s
+Epoch [88/150] | Train Loss: 0.305028 | Val Loss: 0.308445 | LR: 1.00e-01 | Patience: 0 | Time: 118.2s
+Epoch [89/150] | Train Loss: 0.304107 | Val Loss: 0.307389 | LR: 1.00e-01 | Patience: 0 | Time: 118.8s
+Epoch [90/150] | Train Loss: 0.303154 | Val Loss: 0.306273 | LR: 1.00e-01 | Patience: 0 | Time: 114.2s
+Epoch [91/150] | Train Loss: 0.302272 | Val Loss: 0.305567 | LR: 1.00e-01 | Patience: 0 | Time: 116.4s
+Epoch [92/150] | Train Loss: 0.301609 | Val Loss: 0.305282 | LR: 1.00e-01 | Patience: 0 | Time: 112.3s
+Epoch [93/150] | Train Loss: 0.300852 | Val Loss: 0.304059 | LR: 1.00e-01 | Patience: 0 | Time: 112.9s
+Epoch [94/150] | Train Loss: 0.299746 | Val Loss: 0.303072 | LR: 1.00e-01 | Patience: 0 | Time: 118.2s
+Epoch [95/150] | Train Loss: 0.298977 | Val Loss: 0.301641 | LR: 1.00e-01 | Patience: 0 | Time: 119.0s
+Epoch [96/150] | Train Loss: 0.298249 | Val Loss: 0.301333 | LR: 1.00e-01 | Patience: 0 | Time: 115.8s
+Epoch [97/150] | Train Loss: 0.297491 | Val Loss: 0.300888 | LR: 1.00e-01 | Patience: 0 | Time: 114.3s
+Epoch [98/150] | Train Loss: 0.296797 | Val Loss: 0.300199 | LR: 1.00e-01 | Patience: 0 | Time: 114.2s
+Epoch [99/150] | Train Loss: 0.295973 | Val Loss: 0.299694 | LR: 1.00e-01 | Patience: 0 | Time: 115.6s
+Epoch [100/150] | Train Loss: 0.295369 | Val Loss: 0.299200 | LR: 1.00e-01 | Patience: 0 | Time: 119.0s
+Epoch [101/150] | Train Loss: 0.294783 | Val Loss: 0.298840 | LR: 1.00e-01 | Patience: 0 | Time: 115.3s
+Epoch [102/150] | Train Loss: 0.294155 | Val Loss: 0.298233 | LR: 1.00e-01 | Patience: 0 | Time: 118.8s
+Epoch [103/150] | Train Loss: 0.293531 | Val Loss: 0.297252 | LR: 1.00e-01 | Patience: 0 | Time: 122.4s
+Epoch [104/150] | Train Loss: 0.292863 | Val Loss: 0.296369 | LR: 1.00e-01 | Patience: 0 | Time: 118.1s
+Epoch [105/150] | Train Loss: 0.292166 | Val Loss: 0.295898 | LR: 1.00e-01 | Patience: 0 | Time: 116.1s
+Epoch [106/150] | Train Loss: 0.291406 | Val Loss: 0.295411 | LR: 1.00e-01 | Patience: 0 | Time: 116.1s
+Epoch [107/150] | Train Loss: 0.290843 | Val Loss: 0.295307 | LR: 1.00e-01 | Patience: 0 | Time: 119.3s
+Epoch [108/150] | Train Loss: 0.290300 | Val Loss: 0.294822 | LR: 1.00e-01 | Patience: 0 | Time: 113.7s
+Epoch [109/150] | Train Loss: 0.289783 | Val Loss: 0.294281 | LR: 1.00e-01 | Patience: 0 | Time: 116.0s
+Epoch [110/150] | Train Loss: 0.289158 | Val Loss: 0.293410 | LR: 1.00e-01 | Patience: 0 | Time: 119.6s
+Epoch [111/150] | Train Loss: 0.288559 | Val Loss: 0.292868 | LR: 1.00e-01 | Patience: 0 | Time: 119.9s
+Epoch [112/150] | Train Loss: 0.288150 | Val Loss: 0.292532 | LR: 1.00e-01 | Patience: 0 | Time: 113.8s
+Epoch [113/150] | Train Loss: 0.287606 | Val Loss: 0.291945 | LR: 1.00e-01 | Patience: 0 | Time: 114.8s
+Epoch [114/150] | Train Loss: 0.287024 | Val Loss: 0.291624 | LR: 1.00e-01 | Patience: 0 | Time: 112.2s
+Epoch [115/150] | Train Loss: 0.286690 | Val Loss: 0.291442 | LR: 1.00e-01 | Patience: 0 | Time: 118.5s
+Epoch [116/150] | Train Loss: 0.286275 | Val Loss: 0.291184 | LR: 1.00e-01 | Patience: 0 | Time: 113.7s
+Epoch [117/150] | Train Loss: 0.285700 | Val Loss: 0.290503 | LR: 1.00e-01 | Patience: 0 | Time: 120.1s
+Epoch [118/150] | Train Loss: 0.285053 | Val Loss: 0.289841 | LR: 1.00e-01 | Patience: 0 | Time: 113.1s
+Epoch [119/150] | Train Loss: 0.284630 | Val Loss: 0.289501 | LR: 1.00e-01 | Patience: 0 | Time: 115.0s
+Epoch [120/150] | Train Loss: 0.284174 | Val Loss: 0.288837 | LR: 1.00e-01 | Patience: 0 | Time: 113.5s
+Epoch [121/150] | Train Loss: 0.283740 | Val Loss: 0.288440 | LR: 1.00e-01 | Patience: 0 | Time: 112.2s
+Epoch [122/150] | Train Loss: 0.283307 | Val Loss: 0.287735 | LR: 1.00e-01 | Patience: 0 | Time: 112.4s
+Epoch [123/150] | Train Loss: 0.282873 | Val Loss: 0.287112 | LR: 1.00e-01 | Patience: 0 | Time: 113.4s
+Epoch [124/150] | Train Loss: 0.282412 | Val Loss: 0.286824 | LR: 1.00e-01 | Patience: 0 | Time: 116.6s
+Epoch [125/150] | Train Loss: 0.281935 | Val Loss: 0.286350 | LR: 1.00e-01 | Patience: 0 | Time: 112.4s
+Epoch [126/150] | Train Loss: 0.281599 | Val Loss: 0.286076 | LR: 1.00e-01 | Patience: 0 | Time: 117.8s
+Epoch [127/150] | Train Loss: 0.281206 | Val Loss: 0.285770 | LR: 1.00e-01 | Patience: 0 | Time: 114.1s
+Epoch [128/150] | Train Loss: 0.280717 | Val Loss: 0.285636 | LR: 1.00e-01 | Patience: 0 | Time: 112.1s
+Epoch [129/150] | Train Loss: 0.280240 | Val Loss: 0.284980 | LR: 1.00e-01 | Patience: 0 | Time: 113.4s
+Epoch [130/150] | Train Loss: 0.279908 | Val Loss: 0.284939 | LR: 1.00e-01 | Patience: 0 | Time: 113.2s
+Epoch [131/150] | Train Loss: 0.279603 | Val Loss: 0.284843 | LR: 1.00e-01 | Patience: 0 | Time: 112.3s
+Epoch [132/150] | Train Loss: 0.279199 | Val Loss: 0.284148 | LR: 1.00e-01 | Patience: 0 | Time: 116.0s
+Epoch [133/150] | Train Loss: 0.278870 | Val Loss: 0.283793 | LR: 1.00e-01 | Patience: 0 | Time: 112.6s
+Epoch [134/150] | Train Loss: 0.278340 | Val Loss: 0.283526 | LR: 1.00e-01 | Patience: 0 | Time: 117.1s
+Epoch [135/150] | Train Loss: 0.277797 | Val Loss: 0.283144 | LR: 1.00e-01 | Patience: 0 | Time: 120.1s
+Epoch [136/150] | Train Loss: 0.277380 | Val Loss: 0.282672 | LR: 1.00e-01 | Patience: 0 | Time: 119.2s
+Epoch [137/150] | Train Loss: 0.276987 | Val Loss: 0.282437 | LR: 1.00e-01 | Patience: 0 | Time: 114.5s
+Epoch [138/150] | Train Loss: 0.276623 | Val Loss: 0.281994 | LR: 1.00e-01 | Patience: 0 | Time: 117.6s
+Epoch [139/150] | Train Loss: 0.276201 | Val Loss: 0.281747 | LR: 1.00e-01 | Patience: 0 | Time: 113.4s
+Epoch [140/150] | Train Loss: 0.275784 | Val Loss: 0.281489 | LR: 1.00e-01 | Patience: 0 | Time: 118.5s
+Epoch [141/150] | Train Loss: 0.275300 | Val Loss: 0.281207 | LR: 1.00e-01 | Patience: 0 | Time: 119.1s
+Epoch [142/150] | Train Loss: 0.274945 | Val Loss: 0.280930 | LR: 1.00e-01 | Patience: 0 | Time: 120.8s
+Epoch [143/150] | Train Loss: 0.274483 | Val Loss: 0.280653 | LR: 1.00e-01 | Patience: 0 | Time: 114.4s
+Epoch [144/150] | Train Loss: 0.274133 | Val Loss: 0.280565 | LR: 1.00e-01 | Patience: 0 | Time: 111.9s
+Epoch [145/150] | Train Loss: 0.273788 | Val Loss: 0.280561 | LR: 1.00e-01 | Patience: 0 | Time: 112.6s
+Epoch [146/150] | Train Loss: 0.273420 | Val Loss: 0.280135 | LR: 1.00e-01 | Patience: 0 | Time: 112.0s
+Epoch [147/150] | Train Loss: 0.273085 | Val Loss: 0.279644 | LR: 1.00e-01 | Patience: 0 | Time: 118.6s
+Epoch [148/150] | Train Loss: 0.272643 | Val Loss: 0.279593 | LR: 1.00e-01 | Patience: 0 | Time: 118.6s
+Epoch [149/150] | Train Loss: 0.272279 | Val Loss: 0.279082 | LR: 1.00e-01 | Patience: 0 | Time: 118.2s
+Epoch [150/150] | Train Loss: 0.271850 | Val Loss: 0.278638 | LR: 1.00e-01 | Patience: 0 | Time: 118.3s
+Loss weights: {'multiStep_decodeError': 1000, 'oneStepDecoderError': 0, 'forwardError': 100}
+Optimized batch size: 48
+Epoch [1/150] | Train Loss: 0.539079 | Val Loss: 0.551263 | LR: 1.00e-01 | Patience: 0 | Time: 101.1s
+Epoch [2/150] | Train Loss: 0.536580 | Val Loss: 0.546033 | LR: 1.00e-01 | Patience: 1 | Time: 112.5s
+Epoch [3/150] | Train Loss: 0.533056 | Val Loss: 0.539553 | LR: 1.00e-01 | Patience: 2 | Time: 117.3s
+Epoch [4/150] | Train Loss: 0.530116 | Val Loss: 0.540454 | LR: 1.00e-01 | Patience: 3 | Time: 117.7s
+Epoch [5/150] | Train Loss: 0.527651 | Val Loss: 0.537660 | LR: 3.00e-02 | Patience: 4 | Time: 112.2s
+Epoch [6/150] | Train Loss: 0.524205 | Val Loss: 0.534555 | LR: 3.00e-02 | Patience: 5 | Time: 110.8s
+Epoch [7/150] | Train Loss: 0.521224 | Val Loss: 0.529775 | LR: 3.00e-02 | Patience: 6 | Time: 113.0s
+Epoch [8/150] | Train Loss: 0.520263 | Val Loss: 0.528441 | LR: 3.00e-02 | Patience: 7 | Time: 115.7s
+Early stopping triggered after 8 epochs
+Training completed. Best validation loss: 0.278638
+*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.
+
+fit:  0.9954424669096665
+NRMSE:  0.9984362540632418
+elapsed time in simulation: 4.692336797714233
+validationOnMultiHarmonic: True reset every: 1 fit:  0.9954424669096665  NRMSE:  0.9984362540632418
+*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.
+
+fit:  0.9933413304310924
+NRMSE:  0.9986567659351478
+elapsed time in simulation: 3.9608871936798096
+validationOnMultiHarmonic: False reset every: 1 fit:  0.9933413304310924  NRMSE:  0.9986567659351478
+*.*.*.*.*.*.*.*.*.*.*.*.*.*.*......*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........
+
+fit:  0.9918770250890978
+NRMSE:  0.9972129189079351
+elapsed time in simulation: 4.016920804977417
+validationOnMultiHarmonic: True reset every: 10 fit:  0.9918770250890978  NRMSE:  0.9972129189079351
+*.*.*.*.*.*.*.*.*.*.*.*.*.*.*......*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........*..........
+
+fit:  0.9691683615736809
+NRMSE:  0.9937804107815238
+elapsed time in simulation: 4.007715225219727
+validationOnMultiHarmonic: False reset every: 10 fit:  0.9691683615736809  NRMSE:  0.9937804107815238
+*.*.*.*.*.*.*.*.*.*.*.*.*.*.*..........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+
+fit:  0.974148515531098
+NRMSE:  0.9911293623803752
+elapsed time in simulation: 4.005987644195557
+validationOnMultiHarmonic: True reset every: -1 fit:  0.974148515531098  NRMSE:  0.9911293623803752
+*.*.*.*.*.*.*.*.*.*.*.*.*.*.*..........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+
+fit:  0.9074124168731779
+NRMSE:  0.9813216526828371
+elapsed time in simulation: 4.008134841918945
+validationOnMultiHarmonic: False reset every: -1 fit:  0.9074124168731779  NRMSE:  0.9813216526828371
+Closed Loop
+
+Elapsed time in MPC: 23.09385371208191
+{'nonLinearInputChar': True, 'dynamicalSystemSelector': <bound method SystemSelectorEnum.TWOTANKS of <__main__.SystemSelectorEnum object at 0x7f75b6499310>>, 'stringDynamicalSystemSelector': 'TWOTANKS', 'affineStruct': True, 'openLoopStartingPoint': 15, 'horizon': 10, 'TRsteps': 1, 'fitHorizon': 5, 'n_a': 10, 'useGroupLasso': False, 'stateReduction': True, 'regularizerWeight': 0.0001, 'closedLoopSim': True, 'enablePlot': True, 'stateSize': 6, 'inputSize': 1, 'outputSize': 1, 'outputWindowLen': 2, 'n_layers': 3, 'n_neurons': 30, 'epochs': 150, 'batch_size': 48, 'early_stopping_patience': 8, 'min_delta': 1e-07, 'modelSelector': 1, 'modelKind': 'kan', 'testName': 'NLTankNLF5Affine'}

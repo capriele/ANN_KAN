@@ -79,7 +79,6 @@ class DecoderNetwork(nn.Module):
         self.output_window_len = output_window_len
         self.N_Y = N_Y
         self.affine_struct = affine_struct
-        self.activation = self._get_activation(nonlinearity)
 
         self.layers = nn.ModuleList()
         self.layers.append(nn.Linear(state_size, n_neurons))
@@ -92,22 +91,11 @@ class DecoderNetwork(nn.Module):
         )
         self.final_layer = nn.Linear(n_neurons, out_dim)
 
-    def _get_activation(self, nonlinearity: str) -> nn.Module:
-        """Return activation function based on input string."""
-        activations = {
-            "relu": nn.ReLU(),
-            "tanh": nn.Tanh(),
-            "sigmoid": nn.Sigmoid(),
-            "leaky_relu": nn.LeakyReLU(),
-            "linear": nn.Identity(),
-        }
-        return activations.get(nonlinearity, nn.ReLU())
-
     def forward(self, inputs_state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         device = next(self.parameters()).device
         x = inputs_state.to(device)
         for layer in self.layers:
-            x = self.activation(layer(x))
+            x = layer(x)
         x = self.final_layer(x)
         if self.affine_struct:
             x = x.view(-1, self.output_window_len, self.N_Y, self.state_size)
@@ -137,6 +125,9 @@ class BridgeNetwork(nn.Module):
         self.affine_struct = affine_struct
 
         self.bridge0 = nn.Linear(state_size + N_U, n_neurons)
+        self.hidden_layers = nn.ModuleList(
+            [nn.Linear(n_neurons, n_neurons) for _ in range(n_layer - 1)]
+        )
         self.bridge_bias = nn.Linear(n_neurons, state_size)
         if affine_struct:
             self.bridge_f = nn.Linear(n_neurons, state_size * (state_size + N_U))
@@ -150,6 +141,8 @@ class BridgeNetwork(nn.Module):
             [inputs_state.float().to(device), inputs_novelU.float().to(device)], dim=-1
         ).to(device)
         x = self.bridge0(input_concat)
+        for layer in self.hidden_layers:
+            x = layer(x)
         bias = self.bridge_bias(x)
         if self.affine_struct:
             AB = self.bridge_f(x).view(-1, self.state_size, self.state_size + self.N_U)

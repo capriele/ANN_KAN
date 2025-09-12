@@ -1,0 +1,177 @@
+Epochs 150
+Parameters ['main.py', '1', '5', '1', '1', '6', '10', '0', '1', '0', '1', '0', '0', 'NLTankNLReducedF5NONAffineGroupLassoState']
+Option.fitHorizon = 5
+Option.dynamicalSystemSelector = 1
+Option.nonLinearInputChar = 1
+Option.stateSize = 6
+Option.n_a = 10
+Option.affineStruct = 0
+1.0
+Enable KAN model
+Option.modelKind = kan
+Option.modelSelector = 1
+Option.testName = NLTankNLReducedF5NONAffineGroupLassoState
+TWOTANKS
+a
+..a
+.(20000, 1)
+(20000, 1)
+(1000, 1)
+(1000, 1)
+****Squared weighting enabled****
+tensor([0.0108, 0.0075, 0.0048, 0.0027, 0.0012, 0.0003])
+=>if GroupLasso is used,  l2 regularizer is set to 0.0001 in all bridge, encoder, and decoder
+13
+inputU shape: torch.Size([19986, 15, 1])
+tensor([[[ 1.6121],
+         [ 1.6175],
+         [ 1.5892],
+         ...,
+         [-0.5431],
+         [-0.5300],
+         [-0.5459]],
+
+        [[ 1.6175],
+         [ 1.5892],
+         [ 1.5967],
+         ...,
+         [-0.5300],
+         [-0.5459],
+         [-1.1225]],
+
+        [[ 1.5892],
+         [ 1.5967],
+         [ 1.6084],
+         ...,
+         [-0.5459],
+         [-1.1225],
+         [-1.1064]],
+
+        ...,
+
+        [[-0.9315],
+         [-0.9887],
+         [-0.8375],
+         ...,
+         [ 0.5140],
+         [ 0.5096],
+         [ 0.5318]],
+
+        [[-0.9887],
+         [-0.8375],
+         [-0.8594],
+         ...,
+         [ 0.5096],
+         [ 0.5318],
+         [ 0.5408]],
+
+        [[-0.8375],
+         [-0.8594],
+         [-0.8676],
+         ...,
+         [ 0.5318],
+         [ 0.5408],
+         [ 0.5356]]], dtype=torch.float64)
+inputY shape: torch.Size([19986, 15, 1])
+tensor([[[-0.2801],
+         [-0.3647],
+         [-0.3607],
+         ...,
+         [ 0.4034],
+         [ 0.2850],
+         [ 0.1771]],
+
+        [[-0.3647],
+         [-0.3607],
+         [-0.1939],
+         ...,
+         [ 0.2850],
+         [ 0.1771],
+         [ 0.0080]],
+
+        [[-0.3607],
+         [-0.1939],
+         [-0.0402],
+         ...,
+         [ 0.1771],
+         [ 0.0080],
+         [-0.1267]],
+
+        ...,
+
+        [[-0.8400],
+         [-0.9462],
+         [-1.0655],
+         ...,
+         [-0.6202],
+         [-0.5733],
+         [-0.5190]],
+
+        [[-0.9462],
+         [-1.0655],
+         [-1.0576],
+         ...,
+         [-0.5733],
+         [-0.5190],
+         [-0.4551]],
+
+        [[-1.0655],
+         [-1.0576],
+         [-1.0013],
+         ...,
+         [-0.5190],
+         [-0.4551],
+         [-0.3633]]], dtype=torch.float64)
+trainModel
+Using device: cpu
+Auto-detected 288 workers (Physical cores: 192, Logical: 384)
+Preparing dataset with parallel processing...
+13
+Initializing new model...
+
+ANNModel(
+  (conv_encoder): EncoderNetwork(
+    (kan_network): MultKAN(
+      (act_fun): ModuleList(
+        (0-2): 3 x KANLayer(
+          (base_fun): SiLU()
+        )
+      )
+      (base_fun): SiLU()
+      (symbolic_fun): ModuleList(
+        (0-2): 3 x Symbolic_KANLayer()
+      )
+    )
+  )
+  (output_decoder): DecoderNetwork(
+    (kan_network): MultKAN(
+      (act_fun): ModuleList(
+        (0-3): 4 x KANLayer(
+          (base_fun): SiLU()
+        )
+      )
+      (base_fun): SiLU()
+      (symbolic_fun): ModuleList(
+        (0-3): 4 x Symbolic_KANLayer()
+      )
+    )
+  )
+  (bridge_network): BridgeNetwork(
+    (kan_network): MultKAN(
+      (act_fun): ModuleList(
+        (0-2): 3 x KANLayer(
+          (base_fun): SiLU()
+        )
+      )
+      (base_fun): SiLU()
+      (symbolic_fun): ModuleList(
+        (0-2): 3 x Symbolic_KANLayer()
+      )
+    )
+    (bridge_bias): Linear(in_features=30, out_features=6, bias=True)
+  )
+)
+Total parameters: 95,774, Trainable: 80,406
+Starting training for 150 epochs with 288 workers...
+Loss weights: {'multiStep_decodeError': 100, 'oneStepDecoderError': 1000, 'forwardError': 3}
+Optimized batch size: 48

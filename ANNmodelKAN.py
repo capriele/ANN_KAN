@@ -138,7 +138,7 @@ class BridgeNetwork(nn.Module):
         self.n_layer = n_layer
         self.affine_struct = affine_struct
         input_dim = state_size + N_U
-        width = [input_dim] + [n_neurons] * (n_layer)
+        width = [input_dim] + [n_neurons] * (n_layer - 1)
         self.kan_network = KAN(
             width=width,
             grid=grid_size,
