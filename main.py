@@ -183,7 +183,7 @@ if __name__ == "__main__":
             Option.closedLoopSim = False
         elif int(sys.argv[3]) == 8:
             Option.dynamicalSystemSelector = SystemSelectorEnum().AUVDatasetNonlinear
-            Option.stringDynamicalSystemSelector = "AUVDatasetNonlinear"
+            Option.stringDynamicalSystemSelector = "AUVdatasetNonlinear"
             Option.closedLoopSim = False
 
     if len(sys.argv) > 4:
@@ -514,11 +514,14 @@ if __name__ == "__main__":
                 logU += [u]
             print(".", end="")
         print("\n")
-        logY = np.array(logY)
-        logYR = np.array(logYR)
+        logY = np.array(logY[:-1])
+        logYR = np.array(logYR[:-1])
         # logYR = logYR.reshape(logYR.shape[0], 1)
         a = np.linalg.norm(np.array(logY) - np.array(logYR))
         b = np.linalg.norm(np.mean(np.array(logY)) - np.array(logYR))
+        if b == 0:
+            b = 1
+            a = 1
         fit = 1 - (a / b)
         NRMSE = 1 - np.sqrt(np.mean(np.square(np.array(logY) - np.array(logYR)))) / (
             np.max(logYR) - np.min(logYR)
@@ -528,6 +531,8 @@ if __name__ == "__main__":
         print("fit: ", fit)
         print("NRMSE: ", NRMSE)
         if Option.enablePlot:
+            logY = np.reshape(logY, (logY.shape[0], Option.outputSize, 1))
+            logYR = np.reshape(logYR, (logYR.shape[0], Option.outputSize, 1))
             for i in range(Option.outputSize):
                 plt.figure()
                 plt.title(
