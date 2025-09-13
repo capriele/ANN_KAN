@@ -35,9 +35,9 @@ sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh datasetSilverNLF5NonAffine "5 5 0 6 10 0 0 0"
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh datasetSilverNLF2NonAffine "2 5 0 6 10 0 0 0"
 
-batch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh RHReducedF5NONAffineGroupLassoState "5 3 0 6 10 0 1 0"
+sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh RHReducedF5NONAffineGroupLassoState "5 3 0 6 10 0 1 0"
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh RHReducedF5NONAffineGroupLassoInput "5 3 0 6 10 0 2 0"
-batch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh RHReducedF5NonAffine2 "5 3 0 2 2 0 0 0"
+sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh RHReducedF5NonAffine2 "5 3 0 2 2 0 0 0"
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh RHReducedF5NonAffine4 "5 3 0 4 4 0 0 0"
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh NLTankLinReducedF5NONAffineGroupLassoState "5 1 0 6 10 0 1 0"
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh NLTankLinReducedF5NONAffineGroupLassoInput "5 1 0 6 10 0 2 0"
