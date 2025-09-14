@@ -7,6 +7,9 @@ Created on Thu May 16 18:59:15 2019
 """
 import numpy as np
 from numpy import sqrt
+
+# Fix the random seed
+np.random.seed(1)
 class TwoTanks:
 
     def __init__(self,nonLinearInputChar=False):
