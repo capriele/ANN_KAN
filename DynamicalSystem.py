@@ -9,6 +9,9 @@ import numpy as np
 from numpy import sqrt,cosh,tanh
 from scipy.integrate import solve_ivp
 
+# Fix the random seed
+np.random.seed(1)
+
 # It's actually the hammerstein-wiener! The class is called "LinearSystem" as the the I/O non linearities are a later addition.
 
 class LinearSystem:

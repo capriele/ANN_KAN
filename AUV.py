@@ -4,6 +4,8 @@ import numpy as np
 from functools import partial
 import scipy.integrate
 
+# Fix the random seed
+np.random.seed(1)
 
 class AUV:
     def __init__(self):

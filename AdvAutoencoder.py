@@ -21,6 +21,8 @@ import torch.multiprocessing as torch_mp
 from concurrent.futures import ThreadPoolExecutor
 import psutil
 
+# Fix the random seed
+np.random.seed(1)
 
 class EarlyStopping:
     def __init__(self, patience=5, min_delta=0):

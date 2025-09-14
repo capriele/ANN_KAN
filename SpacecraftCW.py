@@ -45,6 +45,9 @@ sys =
 
 import numpy as np
 
+# Fix the random seed
+np.random.seed(1)
+
 
 class SpacecraftNonlinear:
 
