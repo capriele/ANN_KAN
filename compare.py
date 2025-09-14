@@ -159,10 +159,6 @@ for experiment in os.listdir(os.path.join(results_dir, network_types[0])):
             plt.tight_layout()
             plt.savefig(os.path.join(output_dir, f"{experiment}_comparison.png"))
             plt.close()
-            plt.figure(figsize=(1, 1))
-            plt.axis("off")
-            plt.savefig(os.path.join(output_dir, "space.png"))
-plt.close()
 
 x = np.arange(len(network_types))
 width = 0.35
