@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ann_kan_2
+#SBATCH --job-name=ann
 #SBATCH --output=slurm-%j.out
 #SBATCH --error=slurm-%j.err
 #SBATCH --time=96:00:00
@@ -53,4 +53,55 @@ export LIBRARY_PATH=$HOME/local/python3.11/lib:$HOME/local/lib64:$HOME/local/lib
 arg9="${9:-0}"
 arg10="${10:-0}"
 
-python3 -u main.py
+##./batchRun.sh $1 $2 $3 $4 $5 $6 $7 $8 $arg9 $arg10
+
+# Extract the last argument from the input string
+last_arg="$(echo "${2}" | grep -oE '[^ ]+$')"
+echo "LAST ARG: $last_arg"
+mkdir -p dumps
+if [ "$last_arg" = "1" ]; then
+    mkdir -p results/kan/${1}
+    mkdir -p results/kan/${1}/open_loop
+    mkdir -p results/kan/${1}/closed_loop
+    filename="results/kan/${1}/log.txt"
+elif [ "$last_arg" = "2" ]; then
+    mkdir -p results/koopman/${1}
+    mkdir -p results/koopman/${1}/open_loop
+    mkdir -p results/koopman/${1}/closed_loop
+    filename="results/koopman/${1}/log.txt"
+elif [ "$last_arg" = "3" ]; then
+    mkdir -p results/kan_koopman/${1}
+    mkdir -p results/kan_koopman/${1}/open_loop
+    mkdir -p results/kan_koopman/${1}/closed_loop
+    filename="results/kan_koopman/${1}/log.txt"
+elif [ "$last_arg" = "4" ]; then
+    mkdir -p results/mamba/${1}
+    mkdir -p results/mamba/${1}/open_loop
+    mkdir -p results/mamba/${1}/closed_loop
+    filename="results/mamba/${1}/log.txt"
+else
+    mkdir -p results/ann/${1}
+    mkdir -p results/ann/${1}/open_loop
+    mkdir -p results/ann/${1}/closed_loop
+    filename="results/ann/${1}/log.txt"
+fi
+
+exp_name="${1}"
+
+# Pick method based on last_arg
+case "$last_arg" in
+    1) method="kan" ;;
+    2) method="koopman" ;;
+    3) method="kan_koopman" ;;
+    4) method="mamba" ;;
+    *) method="ann" ;;
+esac
+
+for arg in "$@"; do
+  echo "Arg $n: $arg"
+  ((n++))
+done
+echo ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10}
+i=1
+
+python3 -u main2.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${arg9} ${arg10} ${1}
