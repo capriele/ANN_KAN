@@ -9,6 +9,7 @@ output_dir = "comparative_graphs"
 os.makedirs(output_dir, exist_ok=True)
 network_types = ["ann", "kan", "kan_koopman", "koopman", "mamba"]
 
+
 def extract_values(file_path):
     with open(file_path, "r") as file:
         content = file.read()
@@ -34,6 +35,7 @@ def extract_values(file_path):
         nrmse = [0]
     return fit, nrmse
 
+
 def get_experiment_type(log_path):
     with open(log_path, "r") as file:
         content = file.read()
@@ -41,6 +43,7 @@ def get_experiment_type(log_path):
     reset_every_match = re.findall(r"reset every:\s*(-?\d+)", content)
     reset_every = reset_every_match if reset_every_match else []
     return (multi_harmonic, reset_every)
+
 
 all_fit_data = {network: [] for network in network_types}
 all_nrmse_data = {network: [] for network in network_types}
@@ -169,15 +172,15 @@ mean_fit = [np.mean(all_fit_data[network]) for network in network_types]
 std_fit = [np.std(all_fit_data[network]) for network in network_types]
 
 bars_fit = axes[0].bar(x, mean_fit, width, label="Mean Fit", color="blue")
-axes[0].errorbar(
-    x + width / 2, mean_fit, yerr=std_fit, fmt="none", color="black", capsize=5
-)
+# axes[0].errorbar(
+#     x + width / 2, mean_fit, yerr=std_fit, fmt="none", color="black", capsize=5
+# )
 for bar in bars_fit:
     height = bar.get_height()
     axes[0].text(
         bar.get_x() + bar.get_width() / 2.0,
         height,
-        f"{height:.2f}",
+        f"{height:.3f}",
         ha="center",
         va="bottom",
     )
@@ -190,15 +193,15 @@ mean_nrmse = [np.mean(all_nrmse_data[network]) for network in network_types]
 std_nrmse = [np.std(all_nrmse_data[network]) for network in network_types]
 
 bars_nrmse = axes[1].bar(x, mean_nrmse, width, label="Mean NRMSE", color="orange")
-axes[1].errorbar(
-    x + width / 2, mean_nrmse, yerr=std_nrmse, fmt="none", color="black", capsize=5
-)
+# axes[1].errorbar(
+#     x + width / 2, mean_nrmse, yerr=std_nrmse, fmt="none", color="black", capsize=5
+# )
 for bar in bars_nrmse:
     height = bar.get_height()
     axes[1].text(
         bar.get_x() + bar.get_width() / 2.0,
         height,
-        f"{height:.2f}",
+        f"{height:.3f}",
         ha="center",
         va="bottom",
     )
