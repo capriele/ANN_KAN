@@ -243,6 +243,10 @@ if __name__ == "__main__":
             print("Enable Mamba model")
             Option.modelSelector = 4
             Option.modelKind = "mamba"
+        elif int(sys.argv[10]) == 5:
+            print("Enable Mixed model")
+            Option.modelSelector = 5
+            Option.modelKind = "mixed"
         else:
             Option.modelKind = "ann"
             Option.modelSelector = False
@@ -308,13 +312,13 @@ if __name__ == "__main__":
     #     ),
     #     strict=False,
     # )
-    (
-        predictedLeft,
-        stateLeft,
-        oneStepAheadPredictionError,
-        forwardedPredictedError,
-        forwardError,
-    ) = model.model(inputY, inputU)
+    # (
+    #     predictedLeft,
+    #     stateLeft,
+    #     oneStepAheadPredictionError,
+    #     forwardedPredictedError,
+    #     forwardError,
+    # ) = model.model(inputY, inputU)
 
     # %% Functions definition
     def prepareMatrices(uSequence, x0):

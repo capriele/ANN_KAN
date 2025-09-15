@@ -79,6 +79,11 @@ elif [ "$last_arg" = "4" ]; then
     mkdir -p results/mamba/${1}/open_loop
     mkdir -p results/mamba/${1}/closed_loop
     filename="results/mamba/${1}/log.txt"
+elif [ "$last_arg" = "5" ]; then
+    mkdir -p results/mixed/${1}
+    mkdir -p results/mixed/${1}/open_loop
+    mkdir -p results/mixed/${1}/closed_loop
+    filename="results/mixed/${1}/log.txt"
 else
     mkdir -p results/ann/${1}
     mkdir -p results/ann/${1}/open_loop

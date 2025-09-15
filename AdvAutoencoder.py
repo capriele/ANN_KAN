@@ -15,6 +15,8 @@ from ANNmodel import *
 import ANNmodelKAN as ann_kan
 import ANNmodelKoopman as ann_koopman
 import ANNmodelKANKoopman as ann_kan_koopman
+import ANNmodelMamba as ann_mamba
+import ANNmodelKoopmanMixed as ann_mixed
 import multiprocessing as mp
 import os
 import torch.multiprocessing as torch_mp
@@ -23,6 +25,7 @@ import psutil
 
 # Fix the random seed
 np.random.seed(1)
+
 
 class EarlyStopping:
     def __init__(self, patience=5, min_delta=0):
@@ -173,6 +176,38 @@ class AdvAutoencoder(nn.Module):
                 input_layer_regularizer=self.inputLayerRegularizer,
                 future=future,
             )
+        elif self.modelSelector == 4:
+            en = ann_mamba.EncoderNetwork(
+                stride_len=self.strideLen,
+                n_u=self.N_U,
+                n_y=self.N_Y,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                state_size=self.stateSize,
+                nonlinearity=self.nonlinearity,
+                kernel_regularizer=self.kernel_regularizer,
+                constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
+                use_group_lasso=self.useGroupLasso,
+                state_reduction=self.stateReduction,
+                input_layer_regularizer=self.inputLayerRegularizer,
+                future=future,
+            )
+        elif self.modelSelector == 5:
+            en = ann_mixed.EncoderNetwork(
+                stride_len=self.strideLen,
+                n_u=self.N_U,
+                n_y=self.N_Y,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                state_size=self.stateSize,
+                nonlinearity=self.nonlinearity,
+                kernel_regularizer=self.kernel_regularizer,
+                constraint_on_input_hidden_layer=self.constraintOnInputHiddenLayer,
+                use_group_lasso=self.useGroupLasso,
+                state_reduction=self.stateReduction,
+                input_layer_regularizer=self.inputLayerRegularizer,
+                future=future,
+            )
         else:
             en = EncoderNetwork(
                 stride_len=self.strideLen,
@@ -222,6 +257,26 @@ class AdvAutoencoder(nn.Module):
                 N_Y=self.N_Y,
                 affine_struct=self.affineStruct,
             )
+        elif self.modelSelector == 4:
+            dn = ann_mamba.DecoderNetwork(
+                state_size=self.stateSize,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                output_window_len=self.outputWindowLen,
+                N_Y=self.N_Y,
+                affine_struct=self.affineStruct,
+            )
+        elif self.modelSelector == 5:
+            dn = ann_mixed.DecoderNetwork(
+                state_size=self.stateSize,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                output_window_len=self.outputWindowLen,
+                N_Y=self.N_Y,
+                affine_struct=self.affineStruct,
+            )
         else:
             dn = DecoderNetwork(
                 state_size=self.stateSize,
@@ -255,6 +310,24 @@ class AdvAutoencoder(nn.Module):
             )
         elif self.modelSelector == 3:
             bn = ann_kan_koopman.BridgeNetwork(
+                state_size=self.stateSize,
+                N_U=self.N_U,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                affine_struct=self.affineStruct,
+            )
+        elif self.modelSelector == 4:
+            bn = ann_mamba.BridgeNetwork(
+                state_size=self.stateSize,
+                N_U=self.N_U,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                affine_struct=self.affineStruct,
+            )
+        elif self.modelSelector == 5:
+            bn = ann_mixed.BridgeNetwork(
                 state_size=self.stateSize,
                 N_U=self.N_U,
                 n_neurons=self.n_neurons,
@@ -303,6 +376,28 @@ class AdvAutoencoder(nn.Module):
             )
         elif self.modelSelector == 3:
             ann = ann_kan_koopman.ANNModel(
+                stride_len=self.strideLen,
+                max_range=self.MaxRange,
+                n_y=self.N_Y,
+                n_u=self.N_U,
+                output_window_len=self.outputWindowLen,
+                encoder_network=convEncoder,
+                decoder_network=outputEncoder,
+                bridge_network=bridgeNetwork,
+            )
+        elif self.modelSelector == 4:
+            ann = ann_mamba.ANNModel(
+                stride_len=self.strideLen,
+                max_range=self.MaxRange,
+                n_y=self.N_Y,
+                n_u=self.N_U,
+                output_window_len=self.outputWindowLen,
+                encoder_network=convEncoder,
+                decoder_network=outputEncoder,
+                bridge_network=bridgeNetwork,
+            )
+        elif self.modelSelector == 5:
+            ann = ann_mixed.ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,
                 n_y=self.N_Y,
@@ -688,7 +783,7 @@ class AdvAutoencoder(nn.Module):
     def _setup_cpu_optimizations(self):
         """Setup CPU-specific optimizations."""
         # Set optimal number of threads for PyTorch operations
-        cpu_count = psutil.cpu_count(logical=False)
+        cpu_count = min(32, psutil.cpu_count(logical=False))
         torch.set_num_threads(cpu_count)
 
         # Enable optimized CPU kernels
