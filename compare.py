@@ -7,7 +7,7 @@ from collections import defaultdict
 results_dir = "results"
 output_dir = "comparative_graphs"
 os.makedirs(output_dir, exist_ok=True)
-network_types = ["ann", "kan", "kan_koopman", "koopman", "mamba"]
+network_types = ["ann", "kan", "kan_koopman", "koopman", "mamba", "mixed"]
 
 
 def extract_values(file_path):
@@ -57,7 +57,8 @@ for experiment in os.listdir(os.path.join(results_dir, network_types[0])):
             multi_harmonic, reset_every = get_experiment_type(log_path)
             fig, axes = plt.subplots(1, 2, figsize=(25, 8))
             fig.suptitle(f"{experiment}", fontsize=14)
-            colors = ["blue", "red", "green", "purple", "orange"]
+            # define an array of six colors (one for network type)
+            colors = ["blue", "red", "green", "purple", "orange", "cyan"]
             best_fit_overall = -float("inf")
             best_nrmse_overall = float("inf")
             best_fit_network = None
@@ -92,31 +93,37 @@ for experiment in os.listdir(os.path.join(results_dir, network_types[0])):
                     for i, v in enumerate(fit):
                         color = colors[idx % len(colors)]
                         bar = axes[0].bar(
-                            i + idx * (1 / 5) - 2 / 5,
+                            i + idx * (1 / 6) - 3 / 6,
                             v,
                             color=color,
-                            width=0.15,
+                            width=0.1,
                             label=f"{network}" if i == 0 else "",
                         )
                         if i == best_fit_index_overall and network == best_fit_network:
                             bar[0].set_edgecolor("black")
                             bar[0].set_linewidth(3)
                         axes[0].text(
-                            i + idx * (1 / 5) - 2 / 5,
+                            i + idx * (1 / 6) - 3 / 6,
                             v + 0.02 * max(fit),
                             str(round(v, 3)),
                             ha="center",
                             va="top",
                             fontsize=8,
+                            bbox=dict(
+                                facecolor="white",
+                                alpha=1,
+                                edgecolor="none",
+                                boxstyle="round,pad=0.2",
+                            ),
                         )
                     # Plot NRMSE values
                     for i, v in enumerate(nrmse):
                         color = colors[idx % len(colors)]
                         bar = axes[1].bar(
-                            i + idx * (1 / 5) - 2 / 5,
+                            i + idx * (1 / 6) - 3 / 6,
                             v,
                             color=color,
-                            width=0.15,
+                            width=0.1,
                             label=f"{network}" if i == 0 else "",
                         )
                         if (
@@ -126,15 +133,23 @@ for experiment in os.listdir(os.path.join(results_dir, network_types[0])):
                             bar[0].set_edgecolor("black")
                             bar[0].set_linewidth(3)
                         axes[1].text(
-                            i + idx * (1 / 5) - 2 / 5,
+                            i + idx * (1 / 6) - 3 / 6,
                             v + 0.02 * max(nrmse),
                             str(round(v, 3)),
                             ha="center",
                             va="top",
                             fontsize=8,
+                            bbox=dict(
+                                facecolor="white",
+                                alpha=1,
+                                edgecolor="none",
+                                boxstyle="round,pad=0.2",
+                            ),
                         )
                     # Add vertical dashed line after all bars for this experiment
-                    x_pos = (idx + 1) - 0.5  # Position between last and next experiment
+                    x_pos = (
+                        idx + 0.5 - 0.1 + 0.1 / 4
+                    )  # Position between last and next experiment
                     axes[0].axvline(
                         x=x_pos, color="black", linestyle="--", linewidth=0.8
                     )

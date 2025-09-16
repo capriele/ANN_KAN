@@ -154,7 +154,7 @@ class EncoderNetwork(nn.Module):
         self.input_proj = nn.Linear(input_dim, input_dim)
 
         # Add attention layer
-        self.attention = MultiHeadAttention(input_dim, num_heads=4)
+        self.attention = MultiHeadAttention(input_dim, num_heads=input_dim)
 
         # Rest of the layers
         self.layers = nn.ModuleList()
@@ -275,15 +275,12 @@ class BridgeNetwork(nn.Module):
         self.expand = expand
 
         # S6 layers
-        self.bridge0 = S6Layer(state_size + N_U, n_neurons, d_conv, expand)
-        self.hidden_layers = nn.ModuleList(
-            [S6Layer(n_neurons, n_neurons, d_conv, expand) for _ in range(n_layer - 1)]
-        )
+        self.bridge0 = S6Layer(state_size + N_U, state_size, d_conv, expand)
 
         # Output layers
-        self.bridge_bias = nn.Linear(n_neurons, state_size)
+        self.bridge_bias = nn.Linear(state_size + N_U, state_size)
         if affine_struct:
-            self.bridge_f = nn.Linear(n_neurons, state_size * (state_size + N_U))
+            self.bridge_f = nn.Linear(state_size + N_U, state_size * (state_size + N_U))
 
     def forward(self, inputs_novelU: torch.Tensor, inputs_state: torch.Tensor) -> Union[
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
@@ -296,8 +293,6 @@ class BridgeNetwork(nn.Module):
 
         # Pass through S6 layers
         x = self.bridge0(input_concat.unsqueeze(1)).squeeze(1)
-        for layer in self.hidden_layers:
-            x = layer(x.unsqueeze(1)).squeeze(1)
 
         bias = self.bridge_bias(x)
         if self.affine_struct:

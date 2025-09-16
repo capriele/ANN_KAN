@@ -9,18 +9,18 @@
 # Initialize (optional - function handles empty LAST_JOB_ID)
 unset LAST_JOB_ID
 
-#rm *.log
-#rm *.err
-#rm *.out
+rm *.log
+rm *.err
+rm *.out
 
 # Get all job IDs for the current user and cancel them
 user=$(whoami)
-#for job in $(squeue -u "$user" -h -o "%A"); do
+for job in $(squeue -u "$user" -h -o "%A"); do
     #if [ "$job" -gt 87808 ]; then
-    #scancel "$job"
+    scancel "$job"
     #fi
-    #echo "Removed job: $job"
-#done
+    echo "Removed job: $job"
+done
 
 wait_for_job() {
     local jobid=$1
@@ -68,37 +68,37 @@ submit_and_wait() {
 #################################
 ##        Classical ANN        ##
 #################################
-#bash hpc_ann.sh
+bash hpc_ann.sh
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0"
 
 #################################
 ## The same tasks but with KAN ##
 #################################
-#bash hpc_kan.sh
+bash hpc_kan.sh
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 1"
 
 #####################################
 ## The same tasks but with Koopman ##
 #####################################
-#bash hpc_koopman.sh
+bash hpc_koopman.sh
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 2"
 
 ###########################################
 ## The same tasks but with KAN + Koopman ##
 ###########################################
-#bash hpc_kan_koopman.sh
+bash hpc_kan_koopman.sh
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 3"
 
 ###################################
 ## The same tasks but with MAMBA ##
 ###################################
-#bash hpc_mamba.sh
+bash hpc_mamba.sh
 sbatch --partition=gprod -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 4"
 
 ###################################
 ## The same tasks but with Mixed ##
 ###################################
-bash hpc_mamba.sh
+bash hpc_koopman_mixed.sh
 sbatch --partition=gprod -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 5"
 
 ###########

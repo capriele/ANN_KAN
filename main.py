@@ -231,6 +231,7 @@ if __name__ == "__main__":
             print("Enable KAN model")
             Option.modelSelector = 1
             Option.modelKind = "kan"
+            Option.epochs = 300
         elif int(sys.argv[10]) == 2:
             print("Enable Koopman model")
             Option.modelSelector = 2
@@ -239,6 +240,7 @@ if __name__ == "__main__":
             print("Enable KAN + Koopman model")
             Option.modelSelector = 3
             Option.modelKind = "kan_koopman"
+            Option.epochs = 300
         elif int(sys.argv[10]) == 4:
             print("Enable Mamba model")
             Option.modelSelector = 4

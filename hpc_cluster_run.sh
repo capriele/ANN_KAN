@@ -99,6 +99,7 @@ case "$last_arg" in
     2) method="koopman" ;;
     3) method="kan_koopman" ;;
     4) method="mamba" ;;
+    5) method="mixed" ;;
     *) method="ann" ;;
 esac
 
