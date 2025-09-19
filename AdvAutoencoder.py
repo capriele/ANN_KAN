@@ -99,6 +99,7 @@ class AdvAutoencoder(nn.Module):
         self.constraintOnInputHiddenLayer = None
         self.batch_size = batch_size
         self.modelSelector = modelSelector
+        self.trainableParameters = 0
         if useGroupLasso and regularizerWeight > 0.0:
             # self.constraintOnInputHiddenLayer=unit_norm();
             if stateReduction:
@@ -289,7 +290,7 @@ class AdvAutoencoder(nn.Module):
             )
         return dn
 
-    def bridgeNetwork(self, future=0):
+    def bridgeNetwork(self, alpha=0.5, future=0):
         if self.modelSelector == 1:
             bn = ann_kan.BridgeNetwork(
                 state_size=self.stateSize,
@@ -327,13 +328,26 @@ class AdvAutoencoder(nn.Module):
                 affine_struct=self.affineStruct,
             )
         elif self.modelSelector == 5:
-            bn = ann_mixed.BridgeNetwork(
+            bna = ann_mixed.BridgeNetworkA(
                 state_size=self.stateSize,
                 N_U=self.N_U,
                 n_neurons=self.n_neurons,
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
                 affine_struct=self.affineStruct,
+            )
+            bnb = ann_mixed.BridgeNetworkB(
+                state_size=self.stateSize,
+                N_U=self.N_U,
+                n_neurons=self.n_neurons,
+                n_layer=self.n_layer,
+                nonlinearity=self.nonlinearity,
+                affine_struct=self.affineStruct,
+            )
+            bn = ann_mixed.BridgeNetwork(
+                bridge_network_a=bna,
+                bridge_network_b=bnb,
+                alpha=alpha,
             )
         else:
             bn = BridgeNetwork(
@@ -346,10 +360,10 @@ class AdvAutoencoder(nn.Module):
             )
         return bn
 
-    def ANNModel(self, device=None):
+    def ANNModel(self, device=None, alpha=0.5):
         if device is None:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        bridgeNetwork = self.bridgeNetwork().to(device)
+        bridgeNetwork = self.bridgeNetwork(alpha=alpha).to(device)
         convEncoder = self.encoderNetwork().to(device)
         outputEncoder = self.decoderNetwork().to(device)
         if self.modelSelector == 1:
@@ -420,6 +434,9 @@ class AdvAutoencoder(nn.Module):
             )
         print(f"\n{ann}")
         self.model = ann.to(device)
+        self.trainableParameters = sum(
+            p.numel() for p in self.model.parameters() if p.requires_grad
+        )
         return ann, convEncoder, outputEncoder, bridgeNetwork
 
     def prepareDataset(self, U=None, Y=None):
@@ -455,6 +472,7 @@ class AdvAutoencoder(nn.Module):
         min_delta: float = 0.000001,
         device=None,
         batchMode=False,
+        alpha=0.5,
     ):
         print("trainModel")
         if batchMode:
@@ -469,19 +487,21 @@ class AdvAutoencoder(nn.Module):
                 min_delta=min_delta,
                 epochs=epochs,
                 device=device,
+                alpha=alpha,
             )
         else:
             self.privateTrainModel(
                 [
                     {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
                     # {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                    {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
+                    {"kFPE": 1000, "kAEPrediction": 100, "kForward": 1000},
                 ],
                 shuffled,
                 early_stopping_patience=early_stopping_patience,
                 min_delta=min_delta,
                 epochs=epochs,
                 device=device,
+                alpha=alpha,
             )
 
     def privateTrainModel(
@@ -498,6 +518,7 @@ class AdvAutoencoder(nn.Module):
         prefetch_factor: int = 4,
         use_mixed_precision: bool = False,
         device=None,
+        alpha: float = 0.5,
     ) -> Dict[str, Any]:
         """
         Train the model with GPU/CPU support and optimizations.
@@ -551,7 +572,8 @@ class AdvAutoencoder(nn.Module):
             else:
                 print("Initializing new model...")
                 self.model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel(
-                    device=device
+                    device=device,
+                    alpha=alpha,
                 )
                 if checkpoint_path is None:
                     checkpoint_path = "checkpoints"
@@ -656,6 +678,8 @@ class AdvAutoencoder(nn.Module):
             )
 
             # Loss and training setup
+            # criterion = nn.L1Loss()
+            # criterion = torch.nn.HuberLoss(delta=1.0)
             criterion = nn.MSELoss()
             best_val_loss = float("inf")
             train_losses = []
@@ -674,6 +698,8 @@ class AdvAutoencoder(nn.Module):
                     "multiStep_decodeError": kFPE,
                     "oneStepDecoderError": kAEPrediction,
                     "forwardError": kForward,
+                    "functional_1": 0.0,
+                    "functional_2": 0.0,
                 }
                 print(f"Loss weights: {loss_weights}")
                 print(f"Optimized batch size: {optimized_batch_size}")
@@ -695,9 +721,11 @@ class AdvAutoencoder(nn.Module):
                                 "multiStep_decodeError": outputs[3],
                                 "oneStepDecoderError": outputs[2],
                                 "forwardError": outputs[4],
+                                "functional_1": outputs[0],
+                                "functional_2": outputs[1],
                             }
                             batch_loss, loss_components = self.calculate_weighted_loss(
-                                self.model, output_dict, loss_weights, criterion
+                                output_dict, loss_weights, criterion
                             )
                         if use_mixed_precision and device.type == "cuda":
                             scaler.scale(batch_loss).backward()
@@ -715,9 +743,11 @@ class AdvAutoencoder(nn.Module):
                             "multiStep_decodeError": outputs[3],
                             "oneStepDecoderError": outputs[2],
                             "forwardError": outputs[4],
+                            "functional_1": outputs[0],
+                            "functional_2": outputs[1],
                         }
                         avg_train_loss, _ = self.calculate_weighted_loss(
-                            self.model, output_dict, loss_weights, criterion
+                            output_dict, loss_weights, criterion
                         )
                     train_losses.append(avg_train_loss.item())
 
@@ -907,11 +937,13 @@ class AdvAutoencoder(nn.Module):
                 "multiStep_decodeError": outputs[3],
                 "oneStepDecoderError": outputs[2],
                 "forwardError": outputs[4],
+                "functional_1": outputs[0],
+                "functional_2": outputs[1],
             }
 
             # Calculate loss
             batch_loss, _ = self.calculate_weighted_loss(
-                model, output_dict, loss_weights, criterion
+                output_dict, loss_weights, criterion
             )
 
             val_loss += batch_loss.item()
@@ -940,6 +972,7 @@ class AdvAutoencoder(nn.Module):
         min_delta: float = 0.00001,
         save_best_model: bool = True,
         device=None,
+        alpha=0.5,
     ) -> Dict[str, Any]:
         """
         Train the model with improved error handling, logging, and checkpointing.
@@ -1104,13 +1137,15 @@ class AdvAutoencoder(nn.Module):
                     "multiStep_decodeError": kFPE,
                     "oneStepDecoderError": kAEPrediction,
                     "forwardError": kForward,
-                    # "functional_1": 1.0,
-                    # "functional_2": 1.0,
+                    "functional_1": 0.0,
+                    "functional_2": 0.0,
                 }
 
                 print(f"Loss weights: {loss_weights}")
 
                 # Training setup
+                # criterion = nn.L1Loss()
+                # criterion = torch.nn.HuberLoss(delta=1.0)
                 criterion = nn.MSELoss()
                 best_val_loss = float("inf")
                 train_losses = []
@@ -1142,18 +1177,20 @@ class AdvAutoencoder(nn.Module):
                             "multiStep_decodeError": outputs[3],
                             "oneStepDecoderError": outputs[2],
                             "forwardError": outputs[4],
-                            # "functional_1": outputs[0],
-                            # "functional_2": outputs[1],
+                            "functional_1": outputs[0],
+                            "functional_2": outputs[1],
                         }
                         batch_loss, loss_components = self.calculate_weighted_loss(
-                            self.model, output_dict, loss_weights, criterion
+                            output_dict, loss_weights, criterion
                         )
 
                         # Backward pass
                         batch_loss.backward()
 
                         # Optional: gradient clipping
-                        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
+                        torch.nn.utils.clip_grad_norm_(
+                            self.model.parameters(), max_norm=1.0
+                        )
 
                         # Update weights
                         optimizer.step()
@@ -1230,10 +1267,13 @@ class AdvAutoencoder(nn.Module):
         print(f"Training completed. Best validation loss: {best_val_loss:.6f}")
         return results
 
-    @staticmethod
-    def calculate_weighted_loss(model, outputs, loss_weights, criterion):
+    def calculate_weighted_loss(self, outputs, loss_weights, criterion):
         """Calculate weighted loss from model outputs"""
         loss_components = []
+        # l1_reg = (
+        #     sum(p.abs().sum() for p in self.model.parameters())
+        #     / self.trainableParameters
+        # )
         # l2_reg = sum(p.pow(2).sum() for p in model.parameters())
         for output_name, weight in loss_weights.items():
             if output_name in outputs:
@@ -1243,7 +1283,8 @@ class AdvAutoencoder(nn.Module):
                 loss_component = criterion(output_tensor, adjusted_targets)
                 weighted_loss = weight * loss_component
                 loss_components.append(weighted_loss)
-        # loss_components.append(l2_reg*0.001)
+        # loss_components.append(l1_reg)
+        # loss_components.append(l2_reg * 0.001)
         total_loss = torch.stack(loss_components).sum()
         return total_loss, loss_components
 
@@ -1270,9 +1311,11 @@ class AdvAutoencoder(nn.Module):
                         "multiStep_decodeError": outputs[3],
                         "oneStepDecoderError": outputs[2],
                         "forwardError": outputs[4],
+                        "functional_1": outputs[0],
+                        "functional_2": outputs[1],
                     }
                     batch_loss, loss_components = self.calculate_weighted_loss(
-                        model, output_dict, loss_weights, criterion
+                        output_dict, loss_weights, criterion
                     )
                     val_loss += batch_loss.item()
                     num_batches += 1

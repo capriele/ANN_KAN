@@ -231,6 +231,7 @@ if __name__ == "__main__":
             print("Enable KAN model")
             Option.modelSelector = 1
             Option.modelKind = "kan"
+            Option.n_neurons = 20
             Option.epochs = 300
         elif int(sys.argv[10]) == 2:
             print("Enable Koopman model")
@@ -240,6 +241,7 @@ if __name__ == "__main__":
             print("Enable KAN + Koopman model")
             Option.modelSelector = 3
             Option.modelKind = "kan_koopman"
+            Option.n_neurons = 20
             Option.epochs = 300
         elif int(sys.argv[10]) == 4:
             print("Enable Mamba model")
@@ -298,7 +300,7 @@ if __name__ == "__main__":
         early_stopping_patience=Option.early_stopping_patience,
         min_delta=Option.min_delta,
         device=device,
-        batchMode=False,
+        # batchMode=(Option.modelSelector == 4),  # Batch mode only for mamba
     )
     torch.save(
         model.model.state_dict(),
@@ -522,6 +524,14 @@ if __name__ == "__main__":
         print("\n")
         logY = np.array(logY[:-1])
         logYR = np.array(logYR[:-1])
+
+        # Creazione della maschera per i valori non NaN
+        # non_nan_mask = ~np.isnan(logY) & ~np.isnan(logYR)
+
+        # Applicazione della maschera per rimuovere i NaN
+        # logY = logY[non_nan_mask]
+        # logYR = logYR[non_nan_mask]
+
         # logYR = logYR.reshape(logYR.shape[0], 1)
         a = np.linalg.norm(np.array(logY) - np.array(logYR))
         b = np.linalg.norm(np.mean(np.array(logY)) - np.array(logYR))

@@ -8,9 +8,11 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, embed_dim, num_heads, dropout=0.1):
         super().__init__()
         self.attention = nn.MultiheadAttention(embed_dim, num_heads, dropout=dropout)
+        self.layer_norm = nn.LayerNorm(embed_dim)
 
     def forward(self, x):
         # x shape: (seq_len, batch, embed_dim)
+        x = self.layer_norm(x)
         attn_output, _ = self.attention(x, x, x)
         return attn_output
 
@@ -39,9 +41,12 @@ class S6Layer(nn.Module):
 
         # State space parameters
         self.A_log = nn.Parameter(
-            torch.log(torch.arange(1, d_state + 1).float().repeat(self.d_inner, 1))
+            torch.log(
+                1 + torch.arange(d_state, dtype=torch.float32).repeat(self.d_inner, 1)
+            )
+            / d_state
         )
-        self.D = nn.Parameter(torch.ones(self.d_inner))
+        self.D = nn.Parameter(torch.ones(self.d_inner) * 0.1)
         self.dt_proj = nn.Linear(self.d_inner, self.d_inner)
 
         # Selection projection
@@ -49,33 +54,24 @@ class S6Layer(nn.Module):
         self.C_proj = nn.Linear(self.d_inner, d_state * self.d_inner, bias=False)
 
     def forward(self, x):
-        # x shape: (batch, seq_len, d_model)
         batch, seq_len, _ = x.shape
-
-        # Project input
-        xz = self.in_proj(x)  # (batch, seq_len, d_inner * 2)
-        x, z = xz.chunk(2, dim=-1)  # (batch, seq_len, d_inner)
-
-        # Convolution
-        x = x.transpose(1, 2)  # (batch, d_inner, seq_len)
+        xz = self.in_proj(x)
+        x, z = xz.chunk(2, dim=-1)
+        x = x.transpose(1, 2)
         x = self.conv1d(x)[:, :, :seq_len]
-        x = x.transpose(1, 2)  # (batch, seq_len, d_inner)
+        x = x.transpose(1, 2)
 
-        # State space
-        dt = F.softplus(self.dt_proj(x))  # (batch, seq_len, d_inner)
-        A = -torch.exp(self.A_log.float())  # (d_inner, d_state)
-        D = self.D.float()
+        dt = F.softplus(self.dt_proj(x)) + 1e-4  # Avoid zero
+        dt = torch.clamp(dt, min=-5, max=5)  # Tighter clamp
+        A = -torch.exp(torch.clamp(self.A_log.float(), min=-5, max=5))
+        D = torch.clamp(self.D.float(), min=0.1, max=2)  # Avoid near-zero D
 
-        # Selection
-        B = self.B_proj(x)  # (batch, seq_len, d_state * d_inner)
-        C = self.C_proj(x)  # (batch, seq_len, d_state * d_inner)
+        B = self.B_proj(x)
+        C = self.C_proj(x)
         B = B.view(batch, seq_len, self.d_inner, self.d_state)
         C = C.view(batch, seq_len, self.d_inner, self.d_state)
 
-        # Selective scan
         y = self.selective_scan(x, dt, A, B, C, D)
-
-        # Output projection
         y = self.out_proj(y * z)
         return y
 
@@ -88,42 +84,18 @@ class S6Layer(nn.Module):
         C: torch.Tensor,
         D: torch.Tensor,
     ) -> torch.Tensor:
-        """
-        Perform selective scan: y = selective_scan(u, dt, A, B, C, D)
-
-        Args:
-            u: Input tensor of shape (batch, seq_len, d_inner)
-            dt: Delta tensor of shape (batch, seq_len, d_inner)
-            A: State matrix of shape (d_inner, d_state)
-            B: Input projection of shape (batch, seq_len, d_inner, d_state)
-            C: Output projection of shape (batch, seq_len, d_inner, d_state)
-            D: Skip connection of shape (d_inner,)
-
-        Returns:
-            y: Output tensor of shape (batch, seq_len, d_inner)
-        """
         batch, seq_len, d_inner, d_state = B.shape
-
-        # Discretize continuous parameters A and B
-        dtA = torch.exp(dt.unsqueeze(-1) * A)  # (batch, seq_len, d_inner, d_state)
-        dtB = dt.unsqueeze(-1) * B  # (batch, seq_len, d_inner, d_state)
-
-        # Initialize state
+        dtA = torch.exp(dt.unsqueeze(-1) * A)
+        dtB = dt.unsqueeze(-1) * B
         x = torch.zeros(batch, d_inner, d_state, device=u.device)
-
-        # Perform selective scan
         ys = []
         for i in range(seq_len):
-            # Update state: x = A * x + B * u
             x = dtA[:, i] * x + dtB[:, i]
-            # Project state to output: y = C * x
-            y = (x * C[:, i]).sum(dim=-1)  # (batch, d_inner)
+            x = torch.clamp(x, min=-1e6, max=1e6)
+            y = (x * C[:, i]).sum(dim=-1)
             ys.append(y)
-
-        # Stack outputs and apply skip connection
-        y = torch.stack(ys, dim=1)  # (batch, seq_len, d_inner)
-        y = y + u * D.unsqueeze(0).unsqueeze(0)  # Skip connection
-
+        y = torch.stack(ys, dim=1)
+        y = y + u * D.unsqueeze(0).unsqueeze(0)
         return y
 
 
@@ -149,22 +121,21 @@ class EncoderNetwork(nn.Module):
         self.activation = self._get_activation(nonlinearity)
 
         input_dim = (stride_len * n_u) + (stride_len * n_y)
-
-        # Project input to a lower dimension (e.g., 20)
         self.input_proj = nn.Linear(input_dim, input_dim)
+        nh = input_dim // 64
+        if nh == 0:
+            nh = 1
+        self.attention = MultiHeadAttention(input_dim, num_heads=min(1, nh))
 
-        # Add attention layer
-        self.attention = MultiHeadAttention(input_dim, num_heads=input_dim)
-
-        # Rest of the layers
         self.layers = nn.ModuleList()
         self.layers.append(nn.Linear(input_dim, n_neurons))
         for _ in range(n_layer - 1):
             self.layers.append(nn.Linear(n_neurons, n_neurons))
         self.layers.append(nn.Linear(n_neurons, state_size))
 
+        self._initialize_weights()
+
     def _get_activation(self, nonlinearity: str) -> nn.Module:
-        """Return activation function based on input string."""
         activations = {
             "relu": nn.ReLU(),
             "tanh": nn.Tanh(),
@@ -174,25 +145,28 @@ class EncoderNetwork(nn.Module):
         }
         return activations.get(nonlinearity, nn.ReLU())
 
+    def _initialize_weights(self):
+        for name, param in self.named_parameters():
+            if param.dim() < 2:  # Skip 0D/1D tensors (biases/scalars)
+                if "bias" in name:
+                    nn.init.constant_(param, 0.01)  # Small bias
+                continue
+            if "weight" in name:
+                nn.init.xavier_normal_(param, gain=0.1)  # Smaller gain
+
     def forward(self, inputs_y: torch.Tensor, inputs_u: torch.Tensor) -> torch.Tensor:
         device = next(self.parameters()).device
         x = torch.cat(
             [inputs_y.float().to(device), inputs_u.float().to(device)], dim=-1
         ).to(device)
-
-        # Reshape for attention: (seq_len, batch, input_dim)
         x = self.input_proj(x)
-        x = self.attention(x)
-
-        # Pass through the rest of the layers
+        x = x + self.attention(x)
         for layer in self.layers[:-1]:
             x = self.activation(layer(x))
         return self.layers[-1](x)
 
 
 class DecoderNetwork(nn.Module):
-    """Decoder network for the classical ANN model."""
-
     def __init__(
         self,
         state_size: int,
@@ -217,15 +191,16 @@ class DecoderNetwork(nn.Module):
         self.layers.append(nn.Linear(state_size, n_neurons))
         for _ in range(n_layer - 1):
             self.layers.append(nn.Linear(n_neurons, n_neurons))
+
         out_dim = (
             output_window_len * state_size * self.N_Y
             if affine_struct
             else output_window_len * N_Y
         )
         self.final_layer = nn.Linear(n_neurons, out_dim)
+        self._initialize_weights()
 
     def _get_activation(self, nonlinearity: str) -> nn.Module:
-        """Return activation function based on input string."""
         activations = {
             "relu": nn.ReLU(),
             "tanh": nn.Tanh(),
@@ -234,6 +209,15 @@ class DecoderNetwork(nn.Module):
             "linear": nn.Identity(),
         }
         return activations.get(nonlinearity, nn.ReLU())
+
+    def _initialize_weights(self):
+        for name, param in self.named_parameters():
+            if param.dim() < 2:  # Skip 0D/1D tensors (biases/scalars)
+                if "bias" in name:
+                    nn.init.constant_(param, 0.01)  # Small bias
+                continue
+            if "weight" in name:
+                nn.init.xavier_normal_(param, gain=0.1)  # Smaller gain
 
     def forward(self, inputs_state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         device = next(self.parameters()).device
@@ -249,8 +233,6 @@ class DecoderNetwork(nn.Module):
 
 
 class BridgeNetwork(nn.Module):
-    """Bridge network with S6 layers for selective state space modeling."""
-
     def __init__(
         self,
         state_size: int,
@@ -260,8 +242,8 @@ class BridgeNetwork(nn.Module):
         nonlinearity: str = "relu",
         affine_struct: bool = False,
         d_state: int = 1,
-        d_conv: int = 1,
-        expand: int = 1,
+        d_conv: int = 4,
+        expand: int = 2,
         **kwargs,
     ):
         super().__init__()
@@ -270,17 +252,24 @@ class BridgeNetwork(nn.Module):
         self.n_neurons = n_neurons
         self.n_layer = n_layer
         self.affine_struct = affine_struct
-        self.d_state = d_state
+        self.d_state = state_size
         self.d_conv = d_conv
         self.expand = expand
 
-        # S6 layers
         self.bridge0 = S6Layer(state_size + N_U, state_size, d_conv, expand)
-
-        # Output layers
         self.bridge_bias = nn.Linear(state_size + N_U, state_size)
         if affine_struct:
             self.bridge_f = nn.Linear(state_size + N_U, state_size * (state_size + N_U))
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for name, param in self.named_parameters():
+            if param.dim() < 2:  # Skip 0D/1D tensors (biases/scalars)
+                if "bias" in name:
+                    nn.init.constant_(param, 0.01)  # Small bias
+                continue
+            if "weight" in name:
+                nn.init.xavier_normal_(param, gain=0.1)  # Smaller gain
 
     def forward(self, inputs_novelU: torch.Tensor, inputs_state: torch.Tensor) -> Union[
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
@@ -290,10 +279,7 @@ class BridgeNetwork(nn.Module):
         input_concat = torch.cat(
             [inputs_state.float().to(device), inputs_novelU.float().to(device)], dim=-1
         ).to(device)
-
-        # Pass through S6 layers
         x = self.bridge0(input_concat.unsqueeze(1)).squeeze(1)
-
         bias = self.bridge_bias(x)
         if self.affine_struct:
             AB = self.bridge_f(x).view(-1, self.state_size, self.state_size + self.N_U)
@@ -303,8 +289,6 @@ class BridgeNetwork(nn.Module):
 
 
 class ANNModel(nn.Module):
-    """Main ANN model integrating Encoder, Decoder, and Bridge networks."""
-
     def __init__(
         self,
         stride_len: int,
@@ -329,11 +313,9 @@ class ANNModel(nn.Module):
     def forward(
         self, inputs_y: torch.Tensor, inputs_u: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-
         device = next(self.parameters()).device
         inputs_y = inputs_y.to(device)
         inputs_u = inputs_u.to(device)
-
         batch_size = inputs_y.size(0)
         (
             prediction_error_collection,
@@ -342,7 +324,6 @@ class ANNModel(nn.Module):
         ) = ([], [], [])
         predicted_ok_collection, state_k_collection = [], []
         forwarded_state = None
-
         for k in range(self.max_range):
             i_yk = inputs_y[:, k : self.stride_len + k]
             i_uk = inputs_u[:, k : self.stride_len + k]
@@ -350,7 +331,6 @@ class ANNModel(nn.Module):
             target_end = self.stride_len + k + 1
             i_target_k = inputs_y[:, target_start:target_end]
             novel_i_uk = inputs_u[:, self.stride_len + k : self.stride_len + k + 1]
-
             state_k = self.conv_encoder(
                 i_yk.reshape(i_yk.shape[0], self.stride_len * self.n_y),
                 i_uk.reshape(i_uk.shape[0], self.stride_len * self.n_u),
@@ -360,7 +340,6 @@ class ANNModel(nn.Module):
             state_k_collection.append(state_k)
             i_target_k = i_target_k.reshape(predicted_ok.shape)
             prediction_error_collection.append(torch.abs(predicted_ok - i_target_k))
-
             if forwarded_state is not None:
                 forwarded_state_n = []
                 bridge_output = self.bridge_network(
@@ -383,7 +362,6 @@ class ANNModel(nn.Module):
                     novel_i_uk.reshape(novel_i_uk.shape[0], self.n_u), state_k
                 )[0]
                 forwarded_state = [bridge_output]
-
         one_step_ahead_prediction_error = torch.cat(prediction_error_collection, dim=1)
         forwarded_predicted_error = (
             torch.cat(forwarded_predicted_error_collection, dim=1)
@@ -395,7 +373,6 @@ class ANNModel(nn.Module):
             if forward_error_collection
             else torch.zeros_like(one_step_ahead_prediction_error[:, :1]).to(device)
         )
-
         return (
             predicted_ok_collection[0],
             state_k_collection[0],
