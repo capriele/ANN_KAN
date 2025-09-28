@@ -93,13 +93,12 @@ sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc
 ## The same tasks but with MAMBA ##
 ###################################
 bash hpc_mamba.sh
-sbatch --partition=gprod -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 4"
+sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 4"
 
 ###################################
 ## The same tasks but with Mixed ##
 ###################################
 bash hpc_koopman_mixed.sh
-sbatch --partition=gprod -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 5"
 
 ###########
 ## TESTS ##

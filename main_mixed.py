@@ -138,6 +138,7 @@ class Options:
         self.modelSelector = False
         self.modelKind = "ann"
         self.testName = "Test"
+        self.alpha = 0
 
 
 if __name__ == "__main__":
@@ -260,8 +261,10 @@ if __name__ == "__main__":
 
     # Find model test name
     if len(sys.argv) > 11:
-        print(f"Option.testName = {str(sys.argv[-1])}")
-        Option.testName = str(sys.argv[-1])
+        Option.alpha = float(sys.argv[11])
+        Option.testName = str(sys.argv[-1]) + "_" + str(sys.argv[11]).replace(".", "_")
+        print(f"Option.alpha = {Option.alpha}")
+        print(f"Option.testName = {Option.testName}")
 
     warnings.filterwarnings("ignore")
 
@@ -301,17 +304,18 @@ if __name__ == "__main__":
         early_stopping_patience=Option.early_stopping_patience,
         min_delta=Option.min_delta,
         device=device,
+        alpha=Option.alpha,
         # batchMode=(Option.modelSelector == 4),  # Batch mode only for mamba
     )
     torch.save(
         model.model.state_dict(),
-        f"results/{Option.modelKind}/{Option.testName}/model.mat",
+        f"results_mixed/{Option.modelKind}/{Option.testName}/model.mat",
     )
     # If you want load a previous model without training
     # model.model, _, _, _ = model.ANNModel()
     # model.model.load_state_dict(
     #     torch.load(
-    #         f"results/{Option.modelKind}/{Option.testName}/model.mat",
+    #         f"results_mixed/{Option.modelKind}/{Option.testName}/model.mat",
     #         map_location=torch.device("cpu"),
     #         weights_only=False,
     #     ),

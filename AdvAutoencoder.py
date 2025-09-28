@@ -694,6 +694,7 @@ class AdvAutoencoder(nn.Module):
                 kAEPrediction = coef["kAEPrediction"]
                 kForward = coef["kForward"]
                 patience_counter = 0
+                best_val_loss = float("inf")
                 loss_weights = {
                     "multiStep_decodeError": kFPE,
                     "oneStepDecoderError": kAEPrediction,
@@ -1025,7 +1026,9 @@ class AdvAutoencoder(nn.Module):
                 checkpoint_dir = Path(checkpoint_path)
             else:
                 print("Initializing new model...")
-                model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel()
+                model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel(
+                    device=device, alpha=alpha
+                )
 
                 # Update checkpoints path and create dir if not exists
                 if checkpoint_path is None:
