@@ -9,18 +9,31 @@
 # Initialize (optional - function handles empty LAST_JOB_ID)
 unset LAST_JOB_ID
 
-rm *.log
-rm *.err
-rm *.out
-
-# Get all job IDs for the current user and cancel them
 user=$(whoami)
-for job in $(squeue -u "$user" -h -o "%A"); do
-    #if [ "$job" -gt 87808 ]; then
-    scancel "$job"
-    #fi
-    echo "Removed job: $job"
-done
+
+# Get list of current jobs for the user
+jobs=$(squeue -u "$user" -h -o "%A")
+
+if [ -z "$jobs" ]; then
+    echo "No jobs found for user $user."
+fi
+
+read -p "Do you want to delete all current jobs? [y/N]: " answer
+
+case "$answer" in
+    [Yy]* )
+        rm *.log
+        rm *.err
+        rm *.out
+        for job in $jobs; do
+            scancel "$job"
+            echo "Removed job: $job"
+        done
+        ;;
+    * )
+        echo "No jobs were deleted."
+        ;;
+esac
 
 wait_for_job() {
     local jobid=$1
@@ -92,8 +105,8 @@ sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc
 ###################################
 ## The same tasks but with MAMBA ##
 ###################################
-bash hpc_mamba.sh
-sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 4"
+# bash hpc_mamba.sh
+# sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 4"
 
 ###################################
 ## The same tasks but with Mixed ##
