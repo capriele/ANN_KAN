@@ -222,7 +222,7 @@ class BridgeNetwork(nn.Module):
         main_out_b = out_b[0]
 
         # Combine outputs according to the formula
-        combined_out = self.alpha * main_out_a + (1 - self.alpha) * main_out_b
+        combined_out = main_out_a + main_out_b
 
         # Return the combined output and the rest of the outputs from both networks
         # (assuming the rest are auxiliary outputs like AB, bias, etc.)

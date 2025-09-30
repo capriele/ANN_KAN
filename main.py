@@ -232,7 +232,7 @@ if __name__ == "__main__":
             print("Enable KAN model")
             Option.modelSelector = 1
             Option.modelKind = "kan"
-            Option.n_neurons = 20
+            Option.n_neurons = 8
             Option.epochs = 300
         elif int(sys.argv[10]) == 2:
             print("Enable Koopman model")

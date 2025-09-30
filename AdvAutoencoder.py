@@ -339,7 +339,7 @@ class AdvAutoencoder(nn.Module):
             bnb = ann_mixed.BridgeNetworkB(
                 state_size=self.stateSize,
                 N_U=self.N_U,
-                n_neurons=self.n_neurons,
+                n_neurons=3 + int(alpha * (self.n_neurons - 3)),
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
                 affine_struct=self.affineStruct,
@@ -478,9 +478,8 @@ class AdvAutoencoder(nn.Module):
         if batchMode:
             self.privateTrainModelBatch(
                 [
-                    {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                    # {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                    {"kFPE": 1000, "kAEPrediction": 0, "kForward": 100},
+                    {"kFPE": 0.0, "kAEPrediction": 10.0, "kForward": 0.3},
+                    {"kFPE": 1.0, "kAEPrediction": 0.0, "kForward": 10.0},
                 ],
                 shuffled,
                 early_stopping_patience=early_stopping_patience,
@@ -492,9 +491,8 @@ class AdvAutoencoder(nn.Module):
         else:
             self.privateTrainModel(
                 [
-                    {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                    # {"kFPE": 100, "kAEPrediction": 1000, "kForward": 3},
-                    {"kFPE": 1000, "kAEPrediction": 100, "kForward": 1000},
+                    {"kFPE": 0.0, "kAEPrediction": 10.0, "kForward": 0.3},
+                    {"kFPE": 1.0, "kAEPrediction": 0.0, "kForward": 10.0},
                 ],
                 shuffled,
                 early_stopping_patience=early_stopping_patience,
