@@ -676,10 +676,9 @@ class AdvAutoencoder(nn.Module):
             )
 
             # Loss and training setup
-            # criterion = nn.L1Loss()
+            criterion = nn.L1Loss()
             # criterion = torch.nn.HuberLoss(delta=1.0)
-            criterion = nn.MSELoss()
-            best_val_loss = float("inf")
+            # criterion = nn.MSELoss()
             train_losses = []
             val_losses = []
 
@@ -1145,9 +1144,9 @@ class AdvAutoencoder(nn.Module):
                 print(f"Loss weights: {loss_weights}")
 
                 # Training setup
-                # criterion = nn.L1Loss()
+                criterion = nn.L1Loss()
                 # criterion = torch.nn.HuberLoss(delta=1.0)
-                criterion = nn.MSELoss()
+                # criterion = nn.MSELoss()
                 best_val_loss = float("inf")
                 train_losses = []
                 val_losses = []
