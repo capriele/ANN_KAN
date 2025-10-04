@@ -9,6 +9,7 @@
 #     echo $job
 # done
 
+sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0"
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh NLTankNLF5Affine "5 1 1 6 10 1 0 0"
 #sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh NLTankNLF2Affine "2 1 1 6 10 1 0 0"
 sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=32 --mem=64GB hpc_cluster_run.sh NLTankNLF5NonAffine "5 1 1 6 10 0 0 0"

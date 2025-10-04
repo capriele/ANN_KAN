@@ -362,17 +362,28 @@ class ANNModel(nn.Module):
                     novel_i_uk.reshape(novel_i_uk.shape[0], self.n_u), state_k
                 )[0]
                 forwarded_state = [bridge_output]
-        one_step_ahead_prediction_error = torch.cat(prediction_error_collection, dim=1)
-        forwarded_predicted_error = (
-            torch.cat(forwarded_predicted_error_collection, dim=1)
-            if forwarded_predicted_error_collection
-            else torch.zeros_like(one_step_ahead_prediction_error[:, :1]).to(device)
-        )
-        forward_error = (
-            torch.cat(forward_error_collection, dim=1)
-            if forward_error_collection
-            else torch.zeros_like(one_step_ahead_prediction_error[:, :1]).to(device)
-        )
+
+        # Equivalent to: oneStepAheadPredictionError = keras.layers.concatenate(predictionErrorCollection, name='oneStepDecoderError')
+        one_step_ahead_prediction_error = torch.cat(
+            prediction_error_collection, dim=-1
+        )  # Concatenate along the last dimension
+
+        # Equivalent to the forwardedPredictedError logic
+        if len(forwarded_predicted_error_collection) > 1:
+            forwarded_predicted_error = torch.cat(
+                forwarded_predicted_error_collection, dim=-1
+            )
+        else:
+            forwarded_predicted_error = torch.abs(
+                forwarded_predicted_error_collection[0]
+            )
+
+        # Equivalent to the forwardError logic
+        if len(forward_error_collection) > 1:
+            forward_error = torch.cat(forward_error_collection, dim=-1)
+        else:
+            forward_error = torch.abs(forward_error_collection[0])
+
         return (
             predicted_ok_collection[0],
             state_k_collection[0],

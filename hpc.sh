@@ -82,31 +82,26 @@ submit_and_wait() {
 ##        Classical ANN        ##
 #################################
 bash hpc_ann.sh
-sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0"
 
 #################################
 ## The same tasks but with KAN ##
 #################################
 bash hpc_kan.sh
-sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 1"
 
 #####################################
 ## The same tasks but with Koopman ##
 #####################################
 bash hpc_koopman.sh
-sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 2"
 
 ###########################################
 ## The same tasks but with KAN + Koopman ##
 ###########################################
 bash hpc_kan_koopman.sh
-sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 3"
 
 ###################################
 ## The same tasks but with MAMBA ##
 ###################################
 # bash hpc_mamba.sh
-# sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 4"
 
 ###################################
 ## The same tasks but with Mixed ##

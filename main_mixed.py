@@ -304,30 +304,31 @@ if __name__ == "__main__":
         early_stopping_patience=Option.early_stopping_patience,
         min_delta=Option.min_delta,
         device=device,
+        batchMode=True,
         alpha=Option.alpha,
         # batchMode=(Option.modelSelector == 4),  # Batch mode only for mamba
     )
     torch.save(
         model.model.state_dict(),
-        f"results_mixed/{Option.modelKind}/{Option.testName}/model.mat",
+        f"results_mixed/{Option.modelKind}/{Option.testName}/model.pth",
     )
     # If you want load a previous model without training
-    # model.model, _, _, _ = model.ANNModel()
-    # model.model.load_state_dict(
-    #     torch.load(
-    #         f"results_mixed/{Option.modelKind}/{Option.testName}/model.mat",
-    #         map_location=torch.device("cpu"),
-    #         weights_only=False,
-    #     ),
-    #     strict=False,
-    # )
-    # (
-    #     predictedLeft,
-    #     stateLeft,
-    #     oneStepAheadPredictionError,
-    #     forwardedPredictedError,
-    #     forwardError,
-    # ) = model.model(inputY, inputU)
+    model.model, _, _, _ = model.ANNModel()
+    model.model.load_state_dict(
+        torch.load(
+            f"results/{Option.modelKind}/{Option.testName}/model.pth",
+            map_location=torch.device("cpu"),
+            weights_only=False,
+        ),
+        # strict=False,
+    )
+    (
+        predictedLeft,
+        stateLeft,
+        oneStepAheadPredictionError,
+        forwardedPredictedError,
+        forwardError,
+    ) = model.model(inputY, inputU)
 
     # %% Functions definition
     def prepareMatrices(uSequence, x0):
@@ -454,10 +455,6 @@ if __name__ == "__main__":
         if YTrue is None:
             x0RealSystem = np.zeros((simulatedSystem.stateSize,))
 
-        x0 = model.model.conv_encoder(
-            pastY.reshape(1, -1),
-            pastU.reshape(1, -1),
-        )
         logY = []
         logU = []
         logYR = []
@@ -465,6 +462,10 @@ if __name__ == "__main__":
         if not (YTrue is None):
             finalRange = YTrue.shape[0]
         for i in range(0, finalRange):
+            x0 = model.model.conv_encoder(
+                pastY.reshape(1, -1),
+                pastU.reshape(1, -1),
+            )
             # Default construction of u as a vector with shape (Option.inputSize, 1)
             u_scalar = 0.5 * np.sin(i / (20 + 0.01 * i)) + 0.5
             # Create a (Option.inputSize, 1) vector with the same value in all positions
@@ -542,7 +543,6 @@ if __name__ == "__main__":
         b = np.linalg.norm(np.mean(np.array(logY)) - np.array(logYR))
         if b == 0:
             b = 1
-            a = 1
         fit = 1 - (a / b)
         NRMSE = 1 - np.sqrt(np.mean(np.square(np.array(logY) - np.array(logYR)))) / (
             np.max(logYR) - np.min(logYR)
