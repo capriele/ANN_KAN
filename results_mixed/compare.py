@@ -92,13 +92,13 @@ all_nrmse_data = {network: [] for network in network_types}
 
 # First process merged experiments (those following the naming convention)
 steps = ["0_0"]
-experiment_prefix = None
+experiment_prefixes = []
 for experiment in os.listdir(os.path.join(results_dir, network_types[0])):
-    if re.match(r".*_\d_\d$", experiment):  # Matches patterns like "exp_0_0"
-        experiment_prefix = (
+    if re.match(r".*_0_0$", experiment):  # Matches patterns like "exp_0_0"
+        experiment_prefixes.append(
             experiment.rsplit("_", 2)[0] + "_"
         )  # Gets "exp_" from "exp_0_0"
-if experiment_prefix:
+for experiment_prefix in experiment_prefixes:
     for step in steps:
         experiment = experiment_prefix + step
         print(f"Processing merged experiment: {experiment}")
@@ -106,11 +106,11 @@ if experiment_prefix:
 
         # Create a figure for each component (0-10)
         for component in range(len(component_data[0][0])):  # for all the elements
-            print(component)
-            print(len(component_data))
-            print(component_data[0][0])
+            # print(component)
+            # print(len(component_data))
+            # print(component_data[0][0])
             fit, nrmse, x_labels = [], [], []
-            for k in range(len(component_data)):  # 0 to 10
+            for k in range(len(component_data.keys())):  # 0 to 10
                 # print(component_data[k])
                 # print(component_data[k][0])
                 # print(component, component_data[k][0][component])
@@ -230,10 +230,14 @@ if experiment_prefix:
             # axes[0].legend(loc="lower right")
             # axes[1].legend(loc="lower right")
             plt.tight_layout()
+            title_tmp = (
+                x_labels[0].replace(" ", "_").replace("\n", "").replace(":", "_")
+            )
+            title_tmp = title_tmp.replace("__", "_")
             plt.savefig(
                 os.path.join(
                     output_dir,
-                    f"{experiment_prefix[:-1]}_alpha_0_{component}.png",
+                    f"{experiment_prefix[:-1]}_{title_tmp}.png",
                 )
             )
             plt.close()
