@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Optional, Tuple, List, Union
+from kan import KAN
 
 
 class EncoderNetwork(nn.Module):
@@ -95,8 +96,49 @@ class DecoderNetwork(nn.Module):
         return x, x
 
 
+# class BridgeNetworkA(nn.Module):
+#     """Bridge network for the classical ANN model."""
+
+#     def __init__(
+#         self,
+#         state_size: int,
+#         N_U: int,
+#         n_neurons: int,
+#         n_layer: int,
+#         nonlinearity: str = "relu",
+#         affine_struct: bool = False,
+#         **kwargs,
+#     ):
+#         super().__init__()
+#         self.state_size = state_size
+#         self.N_U = N_U
+#         self.n_neurons = n_neurons
+#         self.n_layer = n_layer
+#         self.affine_struct = affine_struct
+
+#         self.bridge0 = nn.Linear(state_size + N_U, n_neurons)
+#         self.bridge_bias = nn.Linear(n_neurons, state_size)
+#         if affine_struct:
+#             self.bridge_f = nn.Linear(n_neurons, state_size * (state_size + N_U))
+
+#     def forward(self, inputs_novelU: torch.Tensor, inputs_state: torch.Tensor) -> Union[
+#         Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+#         Tuple[torch.Tensor, torch.Tensor],
+#     ]:
+#         device = next(self.parameters()).device
+#         input_concat = torch.cat(
+#             [inputs_state.float().to(device), inputs_novelU.float().to(device)], dim=-1
+#         ).to(device)
+#         x = self.bridge0(input_concat)
+#         bias = self.bridge_bias(x)
+#         if self.affine_struct:
+#             AB = self.bridge_f(x).view(-1, self.state_size, self.state_size + self.N_U)
+#             out = torch.bmm(AB, input_concat.unsqueeze(-1)).squeeze(-1) + bias
+#             return out, AB, bias
+#         return bias, x, bias
+
 class BridgeNetworkA(nn.Module):
-    """Bridge network for the classical ANN model."""
+    """Bridge network for the KAN-based ANN model."""
 
     def __init__(
         self,
@@ -106,6 +148,10 @@ class BridgeNetworkA(nn.Module):
         n_layer: int,
         nonlinearity: str = "relu",
         affine_struct: bool = False,
+        grid_size: int = 5,
+        spline_order: int = 3,
+        noise_scale: float = 0.1,
+        seed: int = 0,
         **kwargs,
     ):
         super().__init__()
@@ -114,8 +160,18 @@ class BridgeNetworkA(nn.Module):
         self.n_neurons = n_neurons
         self.n_layer = n_layer
         self.affine_struct = affine_struct
-
-        self.bridge0 = nn.Linear(state_size + N_U, n_neurons)
+        input_dim = state_size + N_U
+        width = [input_dim] + [n_neurons] * (n_layer - 1)
+        self.kan_network = KAN(
+            width=width,
+            grid=grid_size,
+            k=spline_order,
+            noise_scale=noise_scale,
+            seed=seed,
+            auto_save=False,
+            symbolic_enabled=False,
+        )
+        self.kan_network.speed(compile=True)
         self.bridge_bias = nn.Linear(n_neurons, state_size)
         if affine_struct:
             self.bridge_f = nn.Linear(n_neurons, state_size * (state_size + N_U))
@@ -128,13 +184,28 @@ class BridgeNetworkA(nn.Module):
         input_concat = torch.cat(
             [inputs_state.float().to(device), inputs_novelU.float().to(device)], dim=-1
         ).to(device)
-        x = self.bridge0(input_concat)
+        x = self.kan_network(input_concat)
         bias = self.bridge_bias(x)
         if self.affine_struct:
             AB = self.bridge_f(x).view(-1, self.state_size, self.state_size + self.N_U)
             out = torch.bmm(AB, input_concat.unsqueeze(-1)).squeeze(-1) + bias
             return out, AB, bias
         return bias, x, bias
+
+    def prune(self, threshold: float = 1e-2) -> None:
+        self.kan_network.prune()
+
+    def plot(self, **kwargs) -> None:
+        self.kan_network.plot(**kwargs)
+
+    def symbolic_formula(self, var: Optional[str] = None) -> str:
+        return self.kan_network.symbolic_formula(var=var)
+
+    def speed(self) -> None:
+        self.kan_network.speed(compile=True)
+
+    def set_mode(self, mode: str) -> None:
+        self.kan_network.train() if mode == "train" else self.kan_network.eval()
 
 
 class BridgeNetworkB(nn.Module):

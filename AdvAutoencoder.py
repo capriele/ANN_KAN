@@ -480,6 +480,7 @@ class AdvAutoencoder(nn.Module):
                 [
                     {"kFPE": 0.0, "kAEPrediction": 10.0, "kForward": 0.3},
                     {"kFPE": 1.0, "kAEPrediction": 0.0, "kForward": 10.0},
+                    {"kFPE": 1.0, "kAEPrediction": 10.0, "kForward": 10.0},
                 ],
                 shuffled,
                 early_stopping_patience=early_stopping_patience,
@@ -493,6 +494,7 @@ class AdvAutoencoder(nn.Module):
                 [
                     {"kFPE": 0.0, "kAEPrediction": 10.0, "kForward": 0.3},
                     {"kFPE": 1.0, "kAEPrediction": 0.0, "kForward": 10.0},
+                    {"kFPE": 1.0, "kAEPrediction": 10.0, "kForward": 10.0},
                 ],
                 shuffled,
                 early_stopping_patience=early_stopping_patience,
@@ -546,9 +548,9 @@ class AdvAutoencoder(nn.Module):
                 # num_workers = max(1, min(logical_count - 2, int(logical_count * 0.75)))
                 print(f"Auto-detected {num_workers} workers")
 
-            # Prepare data with parallel processing
-            print("Preparing dataset with parallel processing...")
-            inputVector, outputVector = self._prepare_dataset_parallel()
+            # Prepare data
+            print("Preparing dataset...")
+            inputVector, outputVector = self.prepareDataset()
 
             # Move data to device
             inputVector = inputVector.to(device, non_blocking=True).contiguous()
@@ -589,9 +591,6 @@ class AdvAutoencoder(nn.Module):
                 )
 
             # Mixed precision setup for GPU
-            scaler = torch.cuda.amp.GradScaler(
-                enabled=use_mixed_precision and device.type == "cuda"
-            )
             if use_mixed_precision and device.type == "cuda":
                 print("Using GPU mixed precision training")
 
@@ -676,9 +675,10 @@ class AdvAutoencoder(nn.Module):
             )
 
             # Loss and training setup
-            criterion = nn.L1Loss()
-            # criterion = torch.nn.HuberLoss(delta=1.0)
-            # criterion = nn.MSELoss()
+            # criterion = nn.L1Loss()
+            criterion = torch.nn.HuberLoss(delta=1.0)
+            if self.modelSelector == 2:
+                criterion = nn.MSELoss()
             train_losses = []
             val_losses = []
 
@@ -725,12 +725,14 @@ class AdvAutoencoder(nn.Module):
                             batch_loss, loss_components = self.calculate_weighted_loss(
                                 output_dict, loss_weights, criterion
                             )
-                        if use_mixed_precision and device.type == "cuda":
-                            scaler.scale(batch_loss).backward()
-                        else:
-                            batch_loss.backward()
+                        batch_loss.backward()
                         # print(f"LBFGS full-batch loss: {loss_components}")
                         return batch_loss
+
+                    # Optional: gradient clipping
+                    torch.nn.utils.clip_grad_norm_(
+                        self.model.parameters(), max_norm=1.0
+                    )
 
                     optimizer.step(closure)
 
@@ -757,7 +759,6 @@ class AdvAutoencoder(nn.Module):
                             val_loader,
                             loss_weights,
                             criterion,
-                            scaler,
                             device,
                         )
                         val_losses.append(avg_val_loss)
@@ -842,11 +843,11 @@ class AdvAutoencoder(nn.Module):
             # Option 1: Try PyTorch 2.0+ compilation first (most performant)
             if hasattr(torch, "compile"):
                 try:
-                    compiled_model = torch.compile(
-                        model, mode="reduce-overhead", backend="inductor"
+                    model.compile(
+                        mode="reduce-overhead", backend="inductor", fullgraph=True
                     )
                     print("Model compiled with torch.compile for CPU optimization")
-                    return compiled_model
+                    return model
                 except Exception as e:
                     logging.warning(
                         f"torch.compile failed: {e}, falling back to other optimizations"
@@ -903,14 +904,8 @@ class AdvAutoencoder(nn.Module):
         else:
             return base_batch_size
 
-    def _prepare_dataset_parallel(self):
-        """Prepare dataset using parallel processing."""
-        # If your prepareDataset method can be parallelized, implement it here
-        # For now, use the original method
-        return self.prepareDataset()
-
     def _validate_model_parallel(
-        self, model, val_loader, loss_weights, criterion, scaler=None, device=None
+        self, model, val_loader, loss_weights, criterion, device=None
     ):
         """Parallel validation with GPU/CPU support."""
         if device is None:
@@ -925,11 +920,7 @@ class AdvAutoencoder(nn.Module):
             batch_input_u = batch_input_u.to(device, non_blocking=True).contiguous()
 
             # Forward pass with optional mixed precision
-            if scaler is not None:
-                with torch.cuda.amp.autocast(enabled=True):
-                    outputs = model(batch_input_y, batch_input_u)
-            else:
-                outputs = model(batch_input_y, batch_input_u)
+            outputs = model(batch_input_y, batch_input_u)
 
             output_dict = {
                 "multiStep_decodeError": outputs[3],
@@ -1144,9 +1135,10 @@ class AdvAutoencoder(nn.Module):
                 print(f"Loss weights: {loss_weights}")
 
                 # Training setup
-                criterion = nn.L1Loss()
-                # criterion = torch.nn.HuberLoss(delta=1.0)
-                # criterion = nn.MSELoss()
+                # criterion = nn.L1Loss()
+                criterion = torch.nn.HuberLoss(delta=1.0)
+                if self.modelSelector == 2:
+                    criterion = nn.MSELoss()
                 best_val_loss = float("inf")
                 train_losses = []
                 val_losses = []
@@ -1270,10 +1262,15 @@ class AdvAutoencoder(nn.Module):
     def calculate_weighted_loss(self, outputs, loss_weights, criterion):
         """Calculate weighted loss from model outputs"""
         loss_components = []
-        # l1_reg = (
-        #     sum(p.abs().sum() for p in self.model.parameters())
-        #     / self.trainableParameters
+        # l1_reg = sum(p.abs().sum() for p in self.model.parameters()) / (
+        #     1000.0  # * self.trainableParameters
         # )
+        # if self.modelSelector == 5:
+        #     l1_reg_b = sum(
+        #         p.abs().sum()
+        #         for p in self.model.bridge_network.bridge_network_b.parameters()
+        #     ) / (200.0)
+        #     l1_reg += l1_reg_b
         # l2_reg = sum(p.pow(2).sum() for p in model.parameters())
         for output_name, weight in loss_weights.items():
             if output_name in outputs:

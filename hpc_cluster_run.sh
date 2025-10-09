@@ -59,39 +59,89 @@ arg10="${10:-0}"
 last_arg="$(echo "${2}" | grep -oE '[^ ]+$')"
 echo "LAST ARG: $last_arg"
 mkdir -p dumps
+exp_name="${1}"
+
+# Function to generate a new experiment name if the directory exists
+generate_new_exp_name() {
+    local original_name="$1"
+    local model_type="$2"
+    local new_name="$original_name"
+    local counter=1
+
+    while [ -d "results/${model_type}/${new_name}" ]; do
+        new_name="${original_name}_${counter}"
+        ((counter++))
+    done
+
+    echo "$new_name"
+}
+
+# Determine model type and create folders
 if [ "$last_arg" = "1" ]; then
-    mkdir -p results/kan/${1}
-    mkdir -p results/kan/${1}/open_loop
-    mkdir -p results/kan/${1}/closed_loop
-    filename="results/kan/${1}/log.txt"
+    model_type="kan"
+    # Check if directory exists and generate new name if needed
+    if [ -d "results/${model_type}/${exp_name}" ]; then
+        exp_name=$(generate_new_exp_name "$exp_name" "$model_type")
+    fi
+    mkdir -p "results/${model_type}/${exp_name}"
+    mkdir -p "results/${model_type}/${exp_name}/open_loop"
+    mkdir -p "results/${model_type}/${exp_name}/closed_loop"
+    filename="results/${model_type}/${exp_name}/log.txt"
+
 elif [ "$last_arg" = "2" ]; then
-    mkdir -p results/koopman/${1}
-    mkdir -p results/koopman/${1}/open_loop
-    mkdir -p results/koopman/${1}/closed_loop
-    filename="results/koopman/${1}/log.txt"
+    model_type="koopman"
+    if [ -d "results/${model_type}/${exp_name}" ]; then
+        exp_name=$(generate_new_exp_name "$exp_name" "$model_type")
+    fi
+    mkdir -p "results/${model_type}/${exp_name}"
+    mkdir -p "results/${model_type}/${exp_name}/open_loop"
+    mkdir -p "results/${model_type}/${exp_name}/closed_loop"
+    filename="results/${model_type}/${exp_name}/log.txt"
+
 elif [ "$last_arg" = "3" ]; then
-    mkdir -p results/kan_koopman/${1}
-    mkdir -p results/kan_koopman/${1}/open_loop
-    mkdir -p results/kan_koopman/${1}/closed_loop
-    filename="results/kan_koopman/${1}/log.txt"
+    model_type="kan_koopman"
+    if [ -d "results/${model_type}/${exp_name}" ]; then
+        exp_name=$(generate_new_exp_name "$exp_name" "$model_type")
+    fi
+    mkdir -p "results/${model_type}/${exp_name}"
+    mkdir -p "results/${model_type}/${exp_name}/open_loop"
+    mkdir -p "results/${model_type}/${exp_name}/closed_loop"
+    filename="results/${model_type}/${exp_name}/log.txt"
+
 elif [ "$last_arg" = "4" ]; then
-    mkdir -p results/mamba/${1}
-    mkdir -p results/mamba/${1}/open_loop
-    mkdir -p results/mamba/${1}/closed_loop
-    filename="results/mamba/${1}/log.txt"
+    model_type="mamba"
+    if [ -d "results/${model_type}/${exp_name}" ]; then
+        exp_name=$(generate_new_exp_name "$exp_name" "$model_type")
+    fi
+    mkdir -p "results/${model_type}/${exp_name}"
+    mkdir -p "results/${model_type}/${exp_name}/open_loop"
+    mkdir -p "results/${model_type}/${exp_name}/closed_loop"
+    filename="results/${model_type}/${exp_name}/log.txt"
+
 elif [ "$last_arg" = "5" ]; then
-    mkdir -p results/mixed/${1}
-    mkdir -p results/mixed/${1}/open_loop
-    mkdir -p results/mixed/${1}/closed_loop
-    filename="results/mixed/${1}/log.txt"
+    model_type="mixed"
+    if [ -d "results/${model_type}/${exp_name}" ]; then
+        exp_name=$(generate_new_exp_name "$exp_name" "$model_type")
+    fi
+    mkdir -p "results/${model_type}/${exp_name}"
+    mkdir -p "results/${model_type}/${exp_name}/open_loop"
+    mkdir -p "results/${model_type}/${exp_name}/closed_loop"
+    filename="results/${model_type}/${exp_name}/log.txt"
+
 else
-    mkdir -p results/ann/${1}
-    mkdir -p results/ann/${1}/open_loop
-    mkdir -p results/ann/${1}/closed_loop
-    filename="results/ann/${1}/log.txt"
+    model_type="ann"
+    if [ -d "results/${model_type}/${exp_name}" ]; then
+        exp_name=$(generate_new_exp_name "$exp_name" "$model_type")
+    fi
+    mkdir -p "results/${model_type}/${exp_name}"
+    mkdir -p "results/${model_type}/${exp_name}/open_loop"
+    mkdir -p "results/${model_type}/${exp_name}/closed_loop"
+    filename="results/${model_type}/${exp_name}/log.txt"
 fi
 
-exp_name="${1}"
+echo "Using experiment name: $exp_name"
+echo "Log will be written to: $filename"
+
 
 # Pick method based on last_arg
 case "$last_arg" in
@@ -111,7 +161,7 @@ echo ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${9} ${10}
 i=1
 rm "$filename"
 touch "$filename"
-python3 -u main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${arg9} ${arg10} ${1} | tee -a "$filename"
+python3 -u main.py $i ${2} ${3} ${4} ${5} ${6} ${7} ${8} ${arg9} ${arg10} ${exp_name} | tee -a "$filename"
 
 base_dir="results/${method}/${exp_name}"
 
@@ -119,7 +169,7 @@ base_dir="results/${method}/${exp_name}"
 mkdir -p "${base_dir}/open_loop" "${base_dir}/closed_loop" "dumps/${method}"
 
 # ---- Move dump file ----
-for file in dumps/dump_${1}.mat; do
+for file in dumps/dump_${exp_name}.mat; do
     if [ -f "$file" ]; then
         mv "$file" "${base_dir}/dump.mat"
         break  # remove this line if you want to move *all* dumps
@@ -127,7 +177,7 @@ for file in dumps/dump_${1}.mat; do
 done
 
 # ---- Move model file ----
-for file in dumps/model_${1}.mat; do
+for file in dumps/model_${exp_name}.mat; do
     if [ -f "$file" ]; then
         mv "$file" "${base_dir}/model.mat"
         break  # remove this line if you want to move *all* dumps

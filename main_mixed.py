@@ -134,7 +134,7 @@ class Options:
         self.epochs = 150
         self.batch_size = 24 * 2
         self.early_stopping_patience = 8
-        self.min_delta = 0.0000001
+        self.min_delta = 0.001  # 0.0000001
         self.modelSelector = False
         self.modelKind = "ann"
         self.testName = "Test"
@@ -233,7 +233,7 @@ if __name__ == "__main__":
             print("Enable KAN model")
             Option.modelSelector = 1
             Option.modelKind = "kan"
-            Option.n_neurons = 20
+            Option.n_neurons = 8
             Option.epochs = 300
         elif int(sys.argv[10]) == 2:
             print("Enable Koopman model")
@@ -243,7 +243,7 @@ if __name__ == "__main__":
             print("Enable KAN + Koopman model")
             Option.modelSelector = 3
             Option.modelKind = "kan_koopman"
-            Option.n_neurons = 20
+            Option.n_neurons = 8
             Option.epochs = 300
         elif int(sys.argv[10]) == 4:
             print("Enable Mamba model")
@@ -313,15 +313,15 @@ if __name__ == "__main__":
         f"results_mixed/{Option.modelKind}/{Option.testName}/model.pth",
     )
     # If you want load a previous model without training
-    model.model, _, _, _ = model.ANNModel()
-    model.model.load_state_dict(
-        torch.load(
-            f"results/{Option.modelKind}/{Option.testName}/model.pth",
-            map_location=torch.device("cpu"),
-            weights_only=False,
-        ),
-        # strict=False,
-    )
+    # model.model, _, _, _ = model.ANNModel()
+    # model.model.load_state_dict(
+    #     torch.load(
+    #         f"results_mixed/{Option.modelKind}/{Option.testName}/model.pth",
+    #         map_location=torch.device("cpu"),
+    #         weights_only=False,
+    #     ),
+    #     # strict=False,
+    # )
     (
         predictedLeft,
         stateLeft,

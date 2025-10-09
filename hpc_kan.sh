@@ -14,7 +14,7 @@ sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=64GB hpc_
 # sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=64GB hpc_cluster_run.sh NLTankNLF2Affine "2 1 1 6 10 1 0 0 1"
 #sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=64GB hpc_cluster_run.sh NLTankNLF5NonAffine "5 1 1 6 10 0 0 0 1"
 # sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=64GB hpc_cluster_run.sh NLTankNLF2NonAffine "2 1 1 6 10 0 0 0 1"
-#sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=64GB hpc_cluster_run.sh NLTankLinF5Affine "5 1 0 6 10 1 0 0 1"
+sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=64GB hpc_cluster_run.sh NLTankLinF5Affine "5 1 0 6 10 1 0 0 1"
 # sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=64GB hpc_cluster_run.sh NLTankLinF2Affine "2 1 0 6 10 1 0 0 1"
 #sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=64GB hpc_cluster_run.sh NLTankLinF5NonAffine "5 1 0 6 10 0 0 0 1"
 # sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=64GB hpc_cluster_run.sh NLTankLinF2NonAffine "2 1 0 6 10 0 0 0 1"

@@ -127,14 +127,6 @@ for file in dumps/dump_${1}.mat; do
     fi
 done
 
-# ---- Move model file ----
-for file in dumps/model_${1}.mat; do
-    if [ -f "$file" ]; then
-        mv "$file" "${base_dir}/model.mat"
-        break  # remove this line if you want to move *all* dumps
-    fi
-done
-
 # ---- Move open loop plots ----
 for file in ./open_loop_*.png; do
     [ -f "$file" ] && mv "$file" "${base_dir}/open_loop/"

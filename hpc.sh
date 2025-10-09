@@ -18,22 +18,22 @@ if [ -z "$jobs" ]; then
     echo "No jobs found for user $user."
 fi
 
-read -p "Do you want to delete all current jobs? [y/N]: " answer
+# read -p "Do you want to delete all current jobs? [y/N]: " answer
 
-case "$answer" in
-    [Yy]* )
-        rm *.log
-        rm *.err
-        rm *.out
-        for job in $jobs; do
-            scancel "$job"
-            echo "Removed job: $job"
-        done
-        ;;
-    * )
-        echo "No jobs were deleted."
-        ;;
-esac
+# case "$answer" in
+#     [Yy]* )
+#         rm *.log
+#         rm *.err
+#         rm *.out
+#         for job in $jobs; do
+#             scancel "$job"
+#             echo "Removed job: $job"
+#         done
+#         ;;
+#     * )
+#         echo "No jobs were deleted."
+#         ;;
+# esac
 
 wait_for_job() {
     local jobid=$1
@@ -106,7 +106,7 @@ bash hpc_kan_koopman.sh
 ###################################
 ## The same tasks but with Mixed ##
 ###################################
-bash hpc_koopman_mixed.sh
+#bash hpc_koopman_mixed.sh
 
 ###########
 ## TESTS ##
