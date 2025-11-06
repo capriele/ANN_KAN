@@ -17,6 +17,7 @@ from multiprocessing import Process, freeze_support
 from SpacecraftCW import SpacecraftNonlinear
 from AUV import AUV
 from AUVDataset import AUVDataset
+from AUVDataset2 import AUVDataset2
 
 # Set random seeds for reproducibility
 # np.random.seed(1)
@@ -105,7 +106,13 @@ class SystemSelectorEnum:
     def AUVDatasetNonlinear(self, non_linear_input_char=False):
         print("AUVDatasetNonlinear")
         dynamic_model = AUVDataset()
-        u, y, u_val, y_val = dynamic_model.prepareDataset(25000, 1000)
+        u, y, u_val, y_val = dynamic_model.prepareDataset(2500, 100)
+        return dynamic_model, u, y, u_val, y_val
+
+    def AUVDataset2Nonlinear(self, non_linear_input_char=False):
+        print("AUVDatase2tNonlinear")
+        dynamic_model = AUVDataset2()
+        u, y, u_val, y_val = dynamic_model.prepareDataset(15000, 5000)
         return dynamic_model, u, y, u_val, y_val
 
 
@@ -185,6 +192,14 @@ if __name__ == "__main__":
         elif int(sys.argv[3]) == 8:
             Option.dynamicalSystemSelector = SystemSelectorEnum().AUVDatasetNonlinear
             Option.stringDynamicalSystemSelector = "AUVdatasetNonlinear"
+            Option.closedLoopSim = False
+        elif int(sys.argv[3]) == 9:
+            Option.dynamicalSystemSelector = SystemSelectorEnum().AUVDataset2Nonlinear
+            Option.stringDynamicalSystemSelector = "AUVDataset2Nonlinear"
+            Option.closedLoopSim = False
+        elif int(sys.argv[3]) == 10:
+            Option.dynamicalSystemSelector = SystemSelectorEnum().AUVDataset2Nonlinear
+            Option.stringDynamicalSystemSelector = "AUVDataset2Nonlinear"
             Option.closedLoopSim = False
 
     if len(sys.argv) > 4:
@@ -300,6 +315,7 @@ if __name__ == "__main__":
     print(inputU)
     print(f"inputY shape: {inputY.shape}")
     print(inputY)
+    start_time = time.time()
     model.trainModel(
         epochs=Option.epochs,
         early_stopping_patience=Option.early_stopping_patience,
@@ -312,6 +328,28 @@ if __name__ == "__main__":
         model.model.state_dict(),
         f"results/{Option.modelKind}/{Option.testName}/model.pth",
     )
+
+    # After the training in the case of KAN blocks try to find symbolic identificaition
+    if (
+        Option.modelKind == "kan_koopman"
+        and Option.stringDynamicalSystemSelector == "AUVdatasetNonlinear"
+    ):
+        model.model.conv_encoder.prune()
+        model.model.conv_encoder.symbolic()
+        model.trainModel(
+            epochs=Option.epochs,
+            early_stopping_patience=Option.early_stopping_patience,
+            min_delta=Option.min_delta,
+            device=device,
+            batchMode=True,
+            newModel=False,
+            # batchMode=(Option.modelSelector == 4),  # Batch mode only for mamba
+        )
+        eqs = model.model.conv_encoder.get_formulas()
+        for eq in eqs:
+            print(eq)
+    print("Training time: %s seconds" % (time.time() - start_time))
+
     # If you want load a previous model without training
     # model.model, _, _, _ = model.ANNModel()
     # model.model.load_state_dict(
@@ -455,6 +493,7 @@ if __name__ == "__main__":
         if YTrue is None:
             x0RealSystem = np.zeros((simulatedSystem.stateSize,))
 
+        logX = []
         logY = []
         logU = []
         logYR = []
@@ -519,6 +558,7 @@ if __name__ == "__main__":
 
             y = model.model.output_decoder(x0)[1]
             if i >= openLoopStartingPoint:
+                logX += [np.reshape(x0.detach().cpu().numpy(), (1, Option.stateSize))]
                 logY += [
                     np.reshape(
                         (y[0][-2]).detach().cpu().numpy(), (1, Option.outputSize)
@@ -528,6 +568,8 @@ if __name__ == "__main__":
                 logU += [u]
             print(".", end="")
         print("\n")
+        logX = np.array(logX[:-1])
+        logU = np.array(logU[:-1])
         logY = np.array(logY[:-1])
         logYR = np.array(logYR[:-1])
 
@@ -537,6 +579,56 @@ if __name__ == "__main__":
         # Applicazione della maschera per rimuovere i NaN
         # logY = logY[non_nan_mask]
         # logYR = logYR[non_nan_mask]
+
+        # Save logs:
+        # === After your loop is done ===
+        logX1 = np.vstack(logX)
+        logY1 = np.vstack(logY)
+        logU1 = np.vstack(logU)
+
+        # === Save individual CSV files ===
+        np.savetxt(
+            f"results/{Option.modelKind}/{Option.testName}/logX.csv",
+            logX1,
+            delimiter=",",
+        )
+        np.savetxt(
+            f"results/{Option.modelKind}/{Option.testName}/logY.csv",
+            logY1,
+            delimiter=",",
+        )
+        np.savetxt(
+            f"results/{Option.modelKind}/{Option.testName}/logU.csv",
+            logU1,
+            delimiter=",",
+        )
+
+        print("Saved: logX.csv, logY.csv, logYR.csv, logU.csv")
+
+        # === Merge all logs into a single CSV ===
+        # Ensure same number of rows for all arrays
+        if logX1.shape[0] == logY1.shape[0] == logU1.shape[0]:
+            combined = np.hstack((logX1, logY1, logU1))
+
+            # Optional header for clarity
+            header = (
+                ",".join([f"X{i}" for i in range(logX1.shape[1])])
+                + ","
+                + ",".join([f"Y{i}" for i in range(logY1.shape[1])])
+                + ","
+                + ",".join([f"U{i}" for i in range(np.array(logU1).shape[1])])
+            )
+
+            np.savetxt(
+                f"results/{Option.modelKind}/{Option.testName}/logs_combined.csv",
+                combined,
+                delimiter=",",
+                header=header,
+                comments="",
+            )
+            print("Merged logs saved to logs_combined.csv")
+        else:
+            print("Warning: Log arrays have different lengths — cannot merge safely.")
 
         # logYR = logYR.reshape(logYR.shape[0], 1)
         a = np.linalg.norm(np.array(logY) - np.array(logYR))

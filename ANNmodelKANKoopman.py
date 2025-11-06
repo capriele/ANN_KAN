@@ -37,6 +37,7 @@ class EncoderNetwork(nn.Module):
             else [input_dim, state_size]
         )
         self.kan_network = KAN(
+            base_fun="identity",
             width=width,
             grid=grid_size,
             k=spline_order,
@@ -45,17 +46,29 @@ class EncoderNetwork(nn.Module):
             auto_save=False,
             symbolic_enabled=False,
         )
-        self.kan_network.speed(compile=True)
+        # self.kan_network.speed(compile=True)
 
     def prune(self, threshold: float = 1e-2) -> None:
         self.kan_network.prune()
+
+    def symbolic(self, lib=None) -> None:
+        self.kan_network.symbolic_enabled = True
+        self.kan_network.auto_symbolic()
+        self.kan_network.symbolic_enabled = False
+
+    def get_formulas(self):
+        self.kan_network.plot()
+        self.kan_network.symbolic_enabled = True
+        formulas = self.kan_network.symbolic_formula()[0]
+        self.kan_network.symbolic_enabled = False
+        return formulas
 
     def forward(self, inputs_y: torch.Tensor, inputs_u: torch.Tensor) -> torch.Tensor:
         device = next(self.parameters()).device
         x = torch.cat(
             [inputs_y.float().to(device), inputs_u.float().to(device)], dim=-1
         ).to(device)
-        return self.kan_network(x)
+        return self.kan_network.forward(x)
 
 
 class DecoderNetwork(nn.Module):
@@ -125,9 +138,6 @@ class BridgeNetwork(nn.Module):
         self.affine_struct = affine_struct
 
         self.bridge0 = nn.Linear(state_size + N_U, n_neurons)
-        self.hidden_layers = nn.ModuleList(
-            [nn.Linear(n_neurons, n_neurons) for _ in range(n_layer - 1)]
-        )
         self.bridge_bias = nn.Linear(n_neurons, state_size)
         if affine_struct:
             self.bridge_f = nn.Linear(n_neurons, state_size * (state_size + N_U))
@@ -141,8 +151,6 @@ class BridgeNetwork(nn.Module):
             [inputs_state.float().to(device), inputs_novelU.float().to(device)], dim=-1
         ).to(device)
         x = self.bridge0(input_concat)
-        for layer in self.hidden_layers:
-            x = layer(x)
         bias = self.bridge_bias(x)
         if self.affine_struct:
             AB = self.bridge_f(x).view(-1, self.state_size, self.state_size + self.N_U)

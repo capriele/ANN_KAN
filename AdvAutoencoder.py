@@ -473,6 +473,7 @@ class AdvAutoencoder(nn.Module):
         device=None,
         batchMode=False,
         alpha=0.5,
+        newModel=True,
     ):
         print("trainModel")
         if batchMode:
@@ -488,6 +489,7 @@ class AdvAutoencoder(nn.Module):
                 epochs=epochs,
                 device=device,
                 alpha=alpha,
+                newModel=newModel,
             )
         else:
             self.privateTrainModel(
@@ -502,6 +504,7 @@ class AdvAutoencoder(nn.Module):
                 epochs=epochs,
                 device=device,
                 alpha=alpha,
+                newModel=newModel,
             )
 
     def privateTrainModel(
@@ -519,6 +522,7 @@ class AdvAutoencoder(nn.Module):
         use_mixed_precision: bool = False,
         device=None,
         alpha: float = 0.5,
+        newModel=True,
     ) -> Dict[str, Any]:
         """
         Train the model with GPU/CPU support and optimizations.
@@ -570,11 +574,14 @@ class AdvAutoencoder(nn.Module):
                 bridgeNetwork = self.model.bridge_network
                 checkpoint_dir = Path(checkpoint_path)
             else:
-                print("Initializing new model...")
-                self.model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel(
-                    device=device,
-                    alpha=alpha,
-                )
+                if newModel:
+                    print("Initializing new model...")
+                    self.model, convEncoder, outputEncoder, bridgeNetwork = (
+                        self.ANNModel(
+                            device=device,
+                            alpha=alpha,
+                        )
+                    )
                 if checkpoint_path is None:
                     checkpoint_path = "checkpoints"
                 checkpoint_dir = Path(checkpoint_path)
@@ -962,6 +969,7 @@ class AdvAutoencoder(nn.Module):
         save_best_model: bool = True,
         device=None,
         alpha=0.5,
+        newModel=True,
     ) -> Dict[str, Any]:
         """
         Train the model with improved error handling, logging, and checkpointing.
@@ -1013,10 +1021,16 @@ class AdvAutoencoder(nn.Module):
                 bridgeNetwork = model.bridge_network
                 checkpoint_dir = Path(checkpoint_path)
             else:
-                print("Initializing new model...")
-                model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel(
-                    device=device, alpha=alpha
-                )
+                if newModel:
+                    print("Initializing new model...")
+                    model, convEncoder, outputEncoder, bridgeNetwork = self.ANNModel(
+                        device=device, alpha=alpha
+                    )
+                else:
+                    model = self.model
+                    convEncoder = self.model.conv_encoder
+                    outputEncoder = self.model.output_decoder
+                    bridgeNetwork = self.model.bridge_network
 
                 # Update checkpoints path and create dir if not exists
                 if checkpoint_path is None:
