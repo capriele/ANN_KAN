@@ -11,6 +11,7 @@ class AUVDataset2:
         self.stateSize = 6
         self.inputSize = 3
         self.outputSize = 6
+        self.paraSize = 4
 
     def innerDynamic(self, xT, uT, para, intgralTermRef=0):
         # Ensure inputs are NumPy arrays

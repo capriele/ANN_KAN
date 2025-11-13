@@ -110,7 +110,7 @@ class SystemSelectorEnum:
         return dynamic_model, u, y, u_val, y_val
 
     def AUVDataset2Nonlinear(self, non_linear_input_char=False):
-        print("AUVDatase2tNonlinear")
+        print("AUVDataset2Nonlinear")
         dynamic_model = AUVDataset2()
         u, y, u_val, y_val = dynamic_model.prepareDataset(15000, 5000)
         return dynamic_model, u, y, u_val, y_val
@@ -195,11 +195,11 @@ if __name__ == "__main__":
             Option.closedLoopSim = False
         elif int(sys.argv[3]) == 9:
             Option.dynamicalSystemSelector = SystemSelectorEnum().AUVDataset2Nonlinear
-            Option.stringDynamicalSystemSelector = "AUVDataset2Nonlinear"
+            Option.stringDynamicalSystemSelector = "AUVdataset2Nonlinear"
             Option.closedLoopSim = False
         elif int(sys.argv[3]) == 10:
             Option.dynamicalSystemSelector = SystemSelectorEnum().AUVDataset2Nonlinear
-            Option.stringDynamicalSystemSelector = "AUVDataset2Nonlinear"
+            Option.stringDynamicalSystemSelector = "AUVdataset2Nonlinear"
             Option.closedLoopSim = False
 
     if len(sys.argv) > 4:
@@ -250,6 +250,8 @@ if __name__ == "__main__":
             Option.n_neurons = 7
             Option.n_layers = 2
             Option.min_delta = 0.0000001
+            print(f"Option.n_neurons: {Option.n_neurons}")
+            print(f"Option.n_layers: {Option.n_layers}")
             Option.epochs = 300
         elif int(sys.argv[10]) == 2:
             print("Enable Koopman model")
@@ -262,6 +264,14 @@ if __name__ == "__main__":
             Option.n_neurons = 7
             Option.n_layers = 2
             Option.min_delta = 0.0000001
+            print(f"Option.n_neurons: {Option.n_neurons}")
+            print(f"Option.n_layers: {Option.n_layers}")
+
+            # Use these parameters only for koopman base symbolic representation
+            # Option.n_neurons = 2
+            # Option.n_layers = 1
+            # Option.min_delta = 0.000001  # 0.0000001  # 0.001
+
             Option.epochs = 300
         elif int(sys.argv[10]) == 4:
             print("Enable Mamba model")
@@ -355,6 +365,7 @@ if __name__ == "__main__":
     # model.model.load_state_dict(
     #     torch.load(
     #         f"results/{Option.modelKind}/{Option.testName}/model.pth",
+    #         #f"results/ann/AUV_DATASET_15/model.pth",
     #         map_location=torch.device("cpu"),
     #         weights_only=False,
     #     ),

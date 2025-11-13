@@ -124,7 +124,8 @@ class AUVDataset:
     def prepareDataset(self, sizeT, sizeV):
         # Load data from CSV
         data = pd.read_csv(
-            "./sys-id-OpenMAUVe/results/Glider_Lib.Simulations.TestAUV_5d_CEGIS_LMI_monopile_v3/TestAUV_5d_CEGIS_LMI_monopile_res.csv"
+            # "./sys-id-OpenMAUVe/results/Glider_Lib.Simulations.TestAUV_5d_CEGIS_LMI_monopile_v3/TestAUV_5d_CEGIS_LMI_monopile_res.csv"
+            "./sys-id-OpenMAUVe/results/Glider_Lib.Simulations.TestAUV_5d_CEGIS_LMI_monopile_v3/TestAUV_5d_CEGIS_LMI_monopile_res_2.csv"
         )
 
         # Extract relevant columns
@@ -141,8 +142,8 @@ class AUVDataset:
         # - y_n is the output (e.g., next state or target)
         # - u_n is the input (e.g., control input or current state)
         # Replace these with your actual logic
-        y_n = x_k[:-sizeV:10, :]  # Example: use all states except last as output
-        u_n = x_k[:-sizeV:10, :]  # Example: use all states except last as input
+        y_n = x_k[:sizeT, :]  # Example: use all states except last as output
+        u_n = x_k[:sizeT, :]  # Example: use all states except last as input
         y_Vn = x_k[-sizeV:, :]  # Last 'sizeV' samples for validation output
         u_Vn = x_k[-sizeV:, :]  # Last 'sizeV' samples for validation input
 
