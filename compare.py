@@ -24,10 +24,14 @@ def extract_values(file_path):
     fit = {
         "mean": [],
         "std": [],
+        "mean_tot": 0,
+        "std_tot": 0,
     }
     nrmse = {
         "mean": [],
         "std": [],
+        "mean_tot": 0,
+        "std_tot": 0,
     }
     fit_tmp = []
     nrmse_tmp = []
@@ -62,7 +66,7 @@ def extract_values(file_path):
         for i, n in enumerate(nrmse_matches):
             if i % 2 == 0:
                 try:
-                    nrmse_tmp.append(float(n))
+                    nrmse_tmp.append(-10 * (float(n) - 1))
                 except ValueError:
                     pass
         if k == 0:
@@ -79,6 +83,10 @@ def extract_values(file_path):
         fit["std"].append(np.std(tmp1))
         nrmse["mean"].append(np.mean(tmp2))
         nrmse["std"].append(np.std(tmp2))
+    fit["mean_tot"] = np.mean(fit["mean"])
+    fit["std_tot"] = np.mean(fit["std"])
+    nrmse["mean_tot"] = np.mean(nrmse["mean"])
+    nrmse["std_tot"] = np.mean(nrmse["std"])
     return fit, nrmse
 
 
@@ -257,8 +265,8 @@ for experiment in os.listdir(os.path.join(results_dir, network_types[0])):
             axes[0].set_ylabel("Fit Value")
             axes[1].set_title("NRMSE Values")
             axes[1].set_ylabel("NRMSE Value")
-            axes[0].legend(loc="lower right")
-            axes[1].legend(loc="lower right")
+            axes[0].legend(loc="lower left")
+            axes[1].legend(loc="lower left")
             plt.tight_layout()
             plt.savefig(os.path.join(output_dir, f"{experiment}_comparison.png"))
             plt.close()

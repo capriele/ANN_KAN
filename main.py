@@ -112,7 +112,8 @@ class SystemSelectorEnum:
     def AUVDataset2Nonlinear(self, non_linear_input_char=False):
         print("AUVDataset2Nonlinear")
         dynamic_model = AUVDataset2()
-        u, y, u_val, y_val = dynamic_model.prepareDataset(15000, 5000)
+        # u, y, u_val, y_val = dynamic_model.prepareDataset(150000, 5000)
+        u, y, u_val, y_val = dynamic_model.prepareDataset(80000, 5000)
         return dynamic_model, u, y, u_val, y_val
 
 
@@ -511,25 +512,25 @@ if __name__ == "__main__":
         finalRange = 1000
         if not (YTrue is None):
             finalRange = YTrue.shape[0]
+        x0 = model.model.conv_encoder(
+            pastY.reshape(1, -1),
+            pastU.reshape(1, -1),
+        )
         for i in range(0, finalRange):
-            x0 = model.model.conv_encoder(
-                pastY.reshape(1, -1),
-                pastU.reshape(1, -1),
-            )
             # Default construction of u as a vector with shape (Option.inputSize, 1)
             u_scalar = 0.5 * np.sin(i / (20 + 0.01 * i)) + 0.5
             # Create a (Option.inputSize, 1) vector with the same value in all positions
             u = np.full((1, Option.inputSize), u_scalar)
 
             if not validationOnMultiHarmonic:
-                u = np.reshape(U_Vn[i], (1, Option.inputSize))  # Ensure u is reshaped
+                u = np.reshape(U_n[i], (1, Option.inputSize))  # Ensure u is reshaped
 
             if YTrue is None:
                 y_kReal, x0RealSystem_ = simulatedSystem.loop(x0RealSystem, u)
                 x0RealSystem = np.reshape(x0RealSystem_, (simulatedSystem.stateSize,))
             else:
                 y_kReal = YTrue[i]
-                u = np.reshape(U_Vn[i], (1, Option.inputSize))  # Ensure u is reshaped
+                u = np.reshape(U_n[i], (1, Option.inputSize))  # Ensure u is reshaped
 
             pastU = torch.cat(
                 (
@@ -549,11 +550,12 @@ if __name__ == "__main__":
                 ),
                 dim=0,
             )[1:]
-            if i < openLoopStartingPoint or (i % _reset == 0 and _reset > 0):
+            if i % _reset == 0 and _reset > 0:
                 x0 = model.model.conv_encoder(
                     torch.tensor(pastY, dtype=torch.float32).reshape(1, -1).to(device),
                     torch.tensor(pastU, dtype=torch.float32).reshape(1, -1).to(device),
                 )
+            if i < openLoopStartingPoint:
                 print("*", end="")
             else:
                 _u = torch.tensor(u, dtype=torch.float32).reshape(1, Option.inputSize)
@@ -631,7 +633,7 @@ if __name__ == "__main__":
             )
 
             np.savetxt(
-                f"results/{Option.modelKind}/{Option.testName}/logs_combined.csv",
+                f"results/{Option.modelKind}/{Option.testName}/logs_combined_{validationOnMultiHarmonic}_{_reset}.csv",
                 combined,
                 delimiter=",",
                 header=header,
@@ -684,7 +686,7 @@ if __name__ == "__main__":
             start = time.time()
             YtrueToPass = None
             if "dataset" in Option.stringDynamicalSystemSelector:
-                YtrueToPass = Y_Vn.copy()
+                YtrueToPass = Y_n.copy()
             fit, NRMSE, logY, logYR = openLoopValidation(
                 validationOnMultiHarmonic=voM,
                 _reset=r,

@@ -461,11 +461,11 @@ if __name__ == "__main__":
         finalRange = 1000
         if not (YTrue is None):
             finalRange = YTrue.shape[0]
+        x0 = model.model.conv_encoder(
+            pastY.reshape(1, -1),
+            pastU.reshape(1, -1),
+        )
         for i in range(0, finalRange):
-            x0 = model.model.conv_encoder(
-                pastY.reshape(1, -1),
-                pastU.reshape(1, -1),
-            )
             # Default construction of u as a vector with shape (Option.inputSize, 1)
             u_scalar = 0.5 * np.sin(i / (20 + 0.01 * i)) + 0.5
             # Create a (Option.inputSize, 1) vector with the same value in all positions

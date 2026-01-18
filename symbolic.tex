@@ -1,0 +1,132 @@
+The input sequence is divided into two strides: \(x_{1}\) to \(x_{8}\) for the first stride, and \(x_{9}\) to \(x_{16}\) for the second. Within each stride, the first four components represent the real model outputs, while the remaining four components correspond to the real model inputs. This symbolic representation not only offers valuable information about the underlying state dynamics of the system but also helps us better understand the relationship between the Koopman state components and the trained model inputs. Specifically, the Koopman state components \(x_{koopman,1}(k)\), \(x_{koopman,2}(k)\), \(x_{koopman,3}(k)\), and \(x_{koopman,4}(k)\) are constructed through a combination of linear and nonlinear transformations of the input variables.
+Each equation exhibits a distinct functional form that captures different aspects of the system dynamics. Equation \ref{eq:model_state_1} for \(x_{koopman,1}(k)\) incorporates trigonometric nonlinearity through the sine function and exponential growth via \(\exp(c_{18} x_2)\), alongside a square root term that introduces sensitivity to \(x_{12}\). This composition suggests that the first Koopman component is particularly responsive to oscillatory behavior and exponential trends in the input space. Equation \ref{eq:model_state_2} for \(x_{koopman,2}(k)\) relies predominantly on linear combinations with dual exponential transformations of \(x_1\) and \(x_{15}\), indicating that this component emphasizes exponential relationships while maintaining a simpler overall structure. In contrast, Equation \ref{eq:model_state_3} for \(x_{koopman,3}(k)\) demonstrates greater complexity through quadratic terms \((1 - e_{18} x_7)^2\) and \((1 - e_{24} x_4)^{-2}\), absolute value operations, and a decaying exponential \(\exp(-e_{23} x_{15})\), suggesting this component captures threshold behaviors, asymmetric responses, and inverse-square dependencies. Finally, Equation \ref{eq:model_state_4} for \(x_{koopman,4}(k)\) combines quadratic \((f_{15} x_1 - 1)^2\) and square root \(\sqrt{f_{17} x_5 + 1}\) terms with an inverse-square relationship \((f_{20} x_9 - 1)^{-2}\), indicating sensitivity to deviations from reference values and potential singularities in the state space.
+These equations illustrate how the Koopman state components are derived from the model inputs through carefully selected basis functions, providing a detailed view of the interactions and transformations involved in the system's state dynamics. The diversity of functional forms across the four components enables the Koopman representation to capture a rich spectrum of linear dependencies, nonlinear couplings, and multiscale temporal behaviors inherent in the underlying dynamical system.
+
+\begin{table}[H]
+\centering
+\caption{Coefficient Definitions $x_{1}(k)$}
+\label{tab:coefficients1}
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Letter} & \textbf{Value} \\
+\hline
+$c_1$ & 0.0283772524800487 \\
+$c_2$ & 0.125603875155349 \\
+$c_3$ & 0.14298954449137 \\
+$c_4$ & 0.160800464674491 \\
+$c_5$ & 0.176479461143872 \\
+$c_6$ & -0.224178027629787 \\
+$c_7$ & -0.393690586829663 \\
+$c_8$ & -0.122964424098278 \\
+$c_9$ & 0.109011742765727 \\
+$c_{10}$ & 0.226222466375912 \\
+$c_{11}$ & -0.0746510287681055 \\
+$c_{12}$ & -0.12168598103411 \\
+$c_{13}$ & 0.696226045508063 \\
+$c_{14}$ & 0.0388398709610525 \\
+$c_{15}$ & -0.155036970973015 \\
+$c_{16}$ & -0.913616341253987 \\
+$c_{17}$ & 0.919725727118985 \\
+$c_{18}$ & 0.743919849395752 \\
+$c_{19}$ & 1.3647198677063 \\
+$c_{20}$ & 4.98999977111816 \\
+\hline
+\end{tabular}
+\end{table}
+\begin{table}[H]
+\centering
+\caption{Coefficient Definitions $x_{2}(k)$}
+\label{tab:coefficients2}
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Letter} & \textbf{Value} \\
+\hline
+$d_1$ & -0.0984051143627926 \\
+$d_2$ & -0.0611315947026014 \\
+$d_3$ & -0.179682218452632 \\
+$d_4$ & -0.141674068096748 \\
+$d_5$ & 0.104730429775618 \\
+$d_6$ & 0.178121640976503 \\
+$d_7$ & 0.0257400869604874 \\
+$d_8$ & -0.131546804372931 \\
+$d_9$ & -0.176392201502258 \\
+$d_{10}$ & -0.140540040648562 \\
+$d_{11}$ & 0.307280719389826 \\
+$d_{12}$ & -0.0899122349000168 \\
+$d_{13}$ & -0.241409645397926 \\
+$d_{14}$ & 0.526932691682525 \\
+$d_{15}$ & -0.247170760359813 \\
+$d_{16}$ & -0.351709281731741 \\
+$d_{17}$ & 0.116079851984978 \\
+$d_{18}$ & 0.226879850029945 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Coefficient Definitions $x_{3}(k)$}
+\label{tab:coefficients3}
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Letter} & \textbf{Value} \\
+\hline
+$e_1$ & 0.0304318765439415 \\
+$e_2$ & 0.0124932993499429 \\
+$e_3$ & -0.0173358531096656 \\
+$e_4$ & -0.27069502761675 \\
+$e_5$ & 0.132292677375441 \\
+$e_6$ & 0.0542033992081326 \\
+$e_7$ & 0.0302473308665148 \\
+$e_8$ & -0.16558989390677 \\
+$e_9$ & -0.221384103322748 \\
+$e_{10}$ & 0.249950096011162 \\
+$e_{11}$ & -0.0740602708118487 \\
+$e_{12}$ & 1.68468703437487 \\
+$e_{13}$ & 0.0034892272669822 \\
+$e_{14}$ & 0.0030491640791297 \\
+$e_{15}$ & -1.91292895213988 \\
+$e_{16}$ & 0.186984386056723 \\
+$e_{17}$ & 0.0125900386872764 \\
+$e_{18}$ & 0.0372475114300665 \\
+$e_{19}$ & 8.97344017028809 \\
+$e_{20}$ & 0.818159878253937 \\
+$e_{21}$ & 9.37007999420166 \\
+$e_{22}$ & 1.01695990562439 \\
+$e_{23}$ & 0.186960011720657 \\
+$e_{24}$ & 0.884646752557637 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Coefficient Definitions $x_{4}(k)$}
+\label{tab:coefficients4}
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Letter} & \textbf{Value} \\
+\hline
+$f_1$ & 0.115896998313041 \\
+$f_2$ & -0.167376440069415 \\
+$f_3$ & -0.087298783110656 \\
+$f_4$ & -0.275858539178898 \\
+$f_5$ & -0.223311177025 \\
+$f_6$ & 0.187325644041154 \\
+$f_7$ & -0.10801796935117 \\
+$f_8$ & -0.0630394886606878 \\
+$f_9$ & 0.183006882091306 \\
+$f_{10}$ & 0.0129587752335261 \\
+$f_{11}$ & 0.194248288869858 \\
+$f_{12}$ & -0.0192257239732586 \\
+$f_{13}$ & -0.264283189777201 \\
+$f_{14}$ & -0.0480928614483712 \\
+$f_{15}$ & -0.504474608972285 \\
+$f_{16}$ & 0.129864222618813 \\
+$f_{17}$ & 0.413728244013029 \\
+$f_{18}$ & -0.00727299559347844 \\
+$f_{19}$ & -0.0332767840534726 \\
+$f_{20}$ & -0.603226064593401 \\
+\hline
+\end{tabular}
+\end{table}

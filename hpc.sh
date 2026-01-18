@@ -18,22 +18,22 @@ if [ -z "$jobs" ]; then
     echo "No jobs found for user $user."
 fi
 
-# read -p "Do you want to delete all current jobs? [y/N]: " answer
+read -p "Do you want to delete all current jobs? [y/N]: " answer
 
-# case "$answer" in
-#     [Yy]* )
-#         rm *.log
-#         rm *.err
-#         rm *.out
-#         for job in $jobs; do
-#             scancel "$job"
-#             echo "Removed job: $job"
-#         done
-#         ;;
-#     * )
-#         echo "No jobs were deleted."
-#         ;;
-# esac
+case "$answer" in
+    [Yy]* )
+        rm *.log
+        rm *.err
+        rm *.out
+        for job in $jobs; do
+            scancel "$job"
+            echo "Removed job: $job"
+        done
+        ;;
+    * )
+        echo "No jobs were deleted."
+        ;;
+esac
 
 wait_for_job() {
     local jobid=$1

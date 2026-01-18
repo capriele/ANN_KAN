@@ -73,6 +73,7 @@ generate_new_exp_name() {
         ((counter++))
     done
 
+    #echo "$original_name"
     echo "$new_name"
 }
 

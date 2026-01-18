@@ -8,9 +8,9 @@ import pandas as pd
 
 class AUVDataset2:
     def __init__(self):
-        self.stateSize = 6
+        self.stateSize = 9
         self.inputSize = 3
-        self.outputSize = 6
+        self.outputSize = 9
         self.paraSize = 4
 
     def innerDynamic(self, xT, uT, para, intgralTermRef=0):
@@ -125,23 +125,30 @@ class AUVDataset2:
     def prepareDataset(self, sizeT, sizeV):
         # Load data from CSV
         data = pd.read_csv(
-            "./sys-id-OpenMAUVe/results/OpenMAUVe.Scenarios.NavigationSeawingDistubances_v1/NavigationSeawingDistubances_res_useful_data_only.csv"
+            # "./sys-id-OpenMAUVe/results/OpenMAUVe.Scenarios.NavigationSeawingDistubances_v1/NavigationSeawingDistubances_res_useful_data_only.csv"
+            # "./sys-id-OpenMAUVe/results/OpenMAUVe.Scenarios.NavigationSeawingDistubances_v1/NavigationSeawingDistubances_res_useful_data_only_short_v2.csv"
+            "./sys-id-OpenMAUVe/results/OpenMAUVe.Scenarios.NavigationSeawingDistubances_v1/NavigationSeawingDistubances_res_useful_data_only_v2.csv"
         )
 
         # Extract relevant columns
-        x1 = data["x1"].values  # state x1
-        x2 = data["x2"].values  # state x2
-        x3 = data["x3"].values  # state x3
-        x4 = data["x4"].values  # state x4
-        x5 = data["x5"].values  # state x5
-        x6 = data["x6"].values  # state x6
+        x1 = data["x1"].values  # state x1 vx
+        x2 = data["x2"].values  # state x2 vy
+        x3 = data["x3"].values  # state x3 vz
+        x4 = data["x4"].values  # state x4 wx
+        x5 = data["x5"].values  # state x5 wy
+        x6 = data["x6"].values  # state x6 wz
+        x7 = data["phi"].values  # state phi
+        x8 = data["theta"].values  # state theta
+        x9 = data["psi"].values  # state psi
+
+        # pos_x,pos_y,pos_z
 
         u1 = data["u1"].values  # state u1
         u2 = data["u2"].values  # state u2
         u3 = data["u3"].values  # state u3
 
         # Stack states to form x_k & u_k (if needed)
-        x_k = np.column_stack((x1,x2,x3,x4,x5,x6))
+        x_k = np.column_stack((x1, x2, x3, x4, x5, x6, x7, x8, x9))
         u_k = np.column_stack((u1,u2,u3))
 
         # Extract inputs (u) and outputs (y) for training and validation
@@ -157,20 +164,20 @@ class AUVDataset2:
         print(y_n.shape)
         print(u_n.shape)
 
-        # Normalize data
-        self.meanY = np.mean(y_n, axis=0)
-        self.meanU = np.mean(u_n, axis=0)
-        self.stdY = np.std(y_n, axis=0)
-        self.stdU = np.std(u_n, axis=0)
+        # # Normalize data
+        # self.meanY = np.mean(y_n, axis=0)
+        # self.meanU = np.mean(u_n, axis=0)
+        # self.stdY = np.std(y_n, axis=0)
+        # self.stdU = np.std(u_n, axis=0)
 
-        # Avoid division by zero
-        self.stdY[self.stdY == 0] = 1.0
-        self.stdU[self.stdU == 0] = 1.0
+        # # Avoid division by zero
+        # self.stdY[self.stdY == 0] = 1.0
+        # self.stdU[self.stdU == 0] = 1.0
 
-        y_n = (y_n - self.meanY) / self.stdY
-        y_Vn = (y_Vn - self.meanY) / self.stdY
-        u_n = (u_n - self.meanU) / self.stdU
-        u_Vn = (u_Vn - self.meanU) / self.stdU
+        # y_n = (y_n - self.meanY) / self.stdY
+        # y_Vn = (y_Vn - self.meanY) / self.stdY
+        # u_n = (u_n - self.meanU) / self.stdU
+        # u_Vn = (u_Vn - self.meanU) / self.stdU
 
         # Reshape for training/validation
         return (
