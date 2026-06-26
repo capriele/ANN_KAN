@@ -76,6 +76,7 @@ class AdvAutoencoder(nn.Module):
         regularizerWeight=0.0005,
         batch_size=24,
         modelSelector=False,
+        kan_family="spline",
     ):
         super(AdvAutoencoder, self).__init__()
 
@@ -99,6 +100,7 @@ class AdvAutoencoder(nn.Module):
         self.constraintOnInputHiddenLayer = None
         self.batch_size = batch_size
         self.modelSelector = modelSelector
+        self.kan_family = kan_family
         self.trainableParameters = 0
         if useGroupLasso and regularizerWeight > 0.0:
             # self.constraintOnInputHiddenLayer=unit_norm();
@@ -119,6 +121,13 @@ class AdvAutoencoder(nn.Module):
         else:
             self.inputLayerRegularizer = self.kernel_regularizer
 
+    def _active_kan_family(self):
+        if self.modelSelector == 6:
+            return "chebyshev"
+        if self.modelSelector == 7:
+            return "fractional"
+        return self.kan_family
+
     def mean_pred(self, y_pred, y_true):
         return torch.mean(y_pred**2)
 
@@ -135,7 +144,7 @@ class AdvAutoencoder(nn.Module):
             self.Y_val = Y_val.copy()
 
     def encoderNetwork(self, future=0):
-        if self.modelSelector == 1:
+        if self.modelSelector in (1, 6, 7):
             en = ann_kan.EncoderNetwork(
                 stride_len=self.strideLen,
                 n_u=self.N_U,
@@ -144,6 +153,7 @@ class AdvAutoencoder(nn.Module):
                 n_layer=self.n_layer,
                 state_size=self.stateSize,
                 nonlinearity=self.nonlinearity,
+                kan_family=self._active_kan_family(),
             )
         elif self.modelSelector == 2:
             en = ann_koopman.EncoderNetwork(
@@ -228,7 +238,7 @@ class AdvAutoencoder(nn.Module):
         return en
 
     def decoderNetwork(self, future=0):
-        if self.modelSelector == 1:
+        if self.modelSelector in (1, 6, 7):
             dn = ann_kan.DecoderNetwork(
                 state_size=self.stateSize,
                 n_neurons=self.n_neurons,
@@ -237,6 +247,7 @@ class AdvAutoencoder(nn.Module):
                 output_window_len=self.outputWindowLen,
                 N_Y=self.N_Y,
                 affine_struct=self.affineStruct,
+                kan_family=self._active_kan_family(),
             )
         elif self.modelSelector == 2:
             dn = ann_koopman.DecoderNetwork(
@@ -291,7 +302,7 @@ class AdvAutoencoder(nn.Module):
         return dn
 
     def bridgeNetwork(self, alpha=0.5, future=0):
-        if self.modelSelector == 1:
+        if self.modelSelector in (1, 6, 7):
             bn = ann_kan.BridgeNetwork(
                 state_size=self.stateSize,
                 N_U=self.N_U,
@@ -299,6 +310,7 @@ class AdvAutoencoder(nn.Module):
                 n_layer=self.n_layer,
                 nonlinearity=self.nonlinearity,
                 affine_struct=self.affineStruct,
+                kan_family=self._active_kan_family(),
             )
         elif self.modelSelector == 2:
             bn = ann_koopman.BridgeNetwork(
@@ -366,7 +378,7 @@ class AdvAutoencoder(nn.Module):
         bridgeNetwork = self.bridgeNetwork(alpha=alpha).to(device)
         convEncoder = self.encoderNetwork().to(device)
         outputEncoder = self.decoderNetwork().to(device)
-        if self.modelSelector == 1:
+        if self.modelSelector in (1, 6, 7):
             ann = ann_kan.ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,

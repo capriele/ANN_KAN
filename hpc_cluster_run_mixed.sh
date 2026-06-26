@@ -85,6 +85,16 @@ elif [ "$last_arg" = "5" ]; then
     mkdir -p "results_mixed/mixed/${1}_${arg11/./_}/open_loop"
     mkdir -p "results_mixed/mixed/${1}_${arg11/./_}/closed_loop"
     filename="results_mixed/mixed/${1}_${arg11/./_}/log.txt"
+elif [ "$last_arg" = "6" ]; then
+    mkdir -p results_mixed/chebyshev_kan/${1}_${arg11/./_}
+    mkdir -p results_mixed/chebyshev_kan/${1}_${arg11/./_}/open_loop
+    mkdir -p results_mixed/chebyshev_kan/${1}_${arg11/./_}/closed_loop
+    filename="results_mixed/chebyshev_kan/${1}_${arg11/./_}/log.txt"
+elif [ "$last_arg" = "7" ]; then
+    mkdir -p results_mixed/fractional_kan/${1}_${arg11/./_}
+    mkdir -p results_mixed/fractional_kan/${1}_${arg11/./_}/open_loop
+    mkdir -p results_mixed/fractional_kan/${1}_${arg11/./_}/closed_loop
+    filename="results_mixed/fractional_kan/${1}_${arg11/./_}/log.txt"
 else
     mkdir -p results_mixed/ann/${1}_${arg11/./_}
     mkdir -p results_mixed/ann/${1}_${arg11/./_}/open_loop
@@ -101,6 +111,8 @@ case "$last_arg" in
     3) method="kan_koopman" ;;
     4) method="mamba" ;;
     5) method="mixed" ;;
+    6) method="chebyshev_kan" ;;
+    7) method="fractional_kan" ;;
     *) method="ann" ;;
 esac
 

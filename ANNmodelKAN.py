@@ -4,6 +4,121 @@ import torch.nn.functional as F
 from typing import Optional, Tuple, List, Union
 from kan import KAN
 
+try:
+    from tabkan import ChebyshevKAN, FractionalKAN
+except ImportError:
+    ChebyshevKAN = None
+    FractionalKAN = None
+
+
+def _normalize_kan_family(kan_family: str) -> str:
+    family = (kan_family or "spline").strip().lower()
+    aliases = {
+        "kan": "spline",
+        "spline": "spline",
+        "chebyshev": "chebyshev",
+        "cheby": "chebyshev",
+        "fractional": "fractional",
+        "jacobi": "fractional",
+        "fractionalkan": "fractional",
+    }
+    return aliases.get(family, family)
+
+
+class KANBackbone(nn.Module):
+    """Thin wrapper that exposes a common interface across KAN backends."""
+
+    def __init__(
+        self,
+        width: List[int],
+        kan_family: str = "spline",
+        grid_size: int = 5,
+        spline_order: int = 3,
+        noise_scale: float = 0.1,
+        seed: int = 0,
+        polynomial_order: Optional[int] = None,
+    ):
+        super().__init__()
+        self.kan_family = _normalize_kan_family(kan_family)
+        self.width = width
+        self.seed = seed
+        self.network = self._build_network(
+            width=width,
+            kan_family=self.kan_family,
+            grid_size=grid_size,
+            spline_order=spline_order,
+            noise_scale=noise_scale,
+            seed=seed,
+            polynomial_order=polynomial_order,
+        )
+
+    def _build_network(
+        self,
+        width: List[int],
+        kan_family: str,
+        grid_size: int,
+        spline_order: int,
+        noise_scale: float,
+        seed: int,
+        polynomial_order: Optional[int],
+    ) -> nn.Module:
+        if kan_family == "spline":
+            network = KAN(
+                width=width,
+                grid=grid_size,
+                k=spline_order,
+                noise_scale=noise_scale,
+                seed=seed,
+                auto_save=False,
+                symbolic_enabled=False,
+            )
+            network.speed(compile=True)
+            return network
+
+        if kan_family == "chebyshev":
+            if ChebyshevKAN is None:
+                raise ImportError(
+                    "ChebyshevKAN requires the 'tabkan' package. Install it in the active environment."
+                )
+            order = polynomial_order or spline_order
+            orders = [order] * max(0, len(width) - 2)
+            return ChebyshevKAN(layers=width, orders=orders)
+
+        if kan_family == "fractional":
+            if FractionalKAN is None:
+                raise ImportError(
+                    "FractionalKAN requires the 'tabkan' package. Install it in the active environment."
+                )
+            order = polynomial_order or spline_order
+            orders = [order] * max(0, len(width) - 2)
+            return FractionalKAN(layers=width, orders=orders)
+
+        raise ValueError(f"Unsupported KAN family '{kan_family}'.")
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.network(x)
+
+    def prune(self, threshold: float = 1e-2) -> None:
+        prune_fn = getattr(self.network, "prune", None)
+        if callable(prune_fn):
+            prune_fn()
+
+    def plot(self, **kwargs) -> None:
+        plot_fn = getattr(self.network, "plot", None)
+        if callable(plot_fn):
+            plot_fn(**kwargs)
+
+    def symbolic_formula(self, var: Optional[str] = None) -> str:
+        symbolic_fn = getattr(self.network, "symbolic_formula", None)
+        if callable(symbolic_fn):
+            return symbolic_fn(var=var)
+        return f"Symbolic formulas are not supported for '{self.kan_family}' backend."
+
+    def speed(self, compile: bool = True) -> None:
+        speed_fn = getattr(self.network, "speed", None)
+        if callable(speed_fn):
+            speed_fn(compile=compile)
+
 
 class EncoderNetwork(nn.Module):
     """Encoder network for the KAN-based ANN model."""
@@ -21,6 +136,8 @@ class EncoderNetwork(nn.Module):
         spline_order: int = 3,
         noise_scale: float = 0.1,
         seed: int = 0,
+        kan_family: str = "spline",
+        polynomial_order: Optional[int] = None,
         **kwargs,
     ):
         super().__init__()
@@ -36,16 +153,15 @@ class EncoderNetwork(nn.Module):
             if n_layer > 1
             else [input_dim, state_size]
         )
-        self.kan_network = KAN(
+        self.kan_network = KANBackbone(
             width=width,
-            grid=grid_size,
-            k=spline_order,
+            kan_family=kan_family,
+            grid_size=grid_size,
+            spline_order=spline_order,
             noise_scale=noise_scale,
             seed=seed,
-            auto_save=False,
-            symbolic_enabled=False,
+            polynomial_order=polynomial_order,
         )
-        self.kan_network.speed(compile=True)
 
     def prune(self, threshold: float = 1e-2) -> None:
         self.kan_network.prune()
@@ -74,6 +190,8 @@ class DecoderNetwork(nn.Module):
         spline_order: int = 3,
         noise_scale: float = 0.1,
         seed: int = 0,
+        kan_family: str = "spline",
+        polynomial_order: Optional[int] = None,
         **kwargs,
     ):
         super().__init__()
@@ -90,16 +208,15 @@ class DecoderNetwork(nn.Module):
             else output_window_len * N_Y
         )
         width.append(out_dim)
-        self.kan_network = KAN(
+        self.kan_network = KANBackbone(
             width=width,
-            grid=grid_size,
-            k=spline_order,
+            kan_family=kan_family,
+            grid_size=grid_size,
+            spline_order=spline_order,
             noise_scale=noise_scale,
             seed=seed,
-            auto_save=False,
-            symbolic_enabled=False,
+            polynomial_order=polynomial_order,
         )
-        self.kan_network.speed(compile=True)
 
     def prune(self, threshold: float = 1e-2) -> None:
         self.kan_network.prune()
@@ -129,6 +246,8 @@ class BridgeNetwork(nn.Module):
         spline_order: int = 3,
         noise_scale: float = 0.1,
         seed: int = 0,
+        kan_family: str = "spline",
+        polynomial_order: Optional[int] = None,
         **kwargs,
     ):
         super().__init__()
@@ -139,16 +258,15 @@ class BridgeNetwork(nn.Module):
         self.affine_struct = affine_struct
         input_dim = state_size + N_U
         width = [input_dim] + [n_neurons] * (n_layer - 1)
-        self.kan_network = KAN(
+        self.kan_network = KANBackbone(
             width=width,
-            grid=grid_size,
-            k=spline_order,
+            kan_family=kan_family,
+            grid_size=grid_size,
+            spline_order=spline_order,
             noise_scale=noise_scale,
             seed=seed,
-            auto_save=False,
-            symbolic_enabled=False,
+            polynomial_order=polynomial_order,
         )
-        self.kan_network.speed(compile=True)
         self.bridge_bias = nn.Linear(n_neurons, state_size)
         if affine_struct:
             self.bridge_f = nn.Linear(n_neurons, state_size * (state_size + N_U))

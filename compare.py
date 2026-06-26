@@ -7,8 +7,8 @@ from collections import defaultdict
 results_dir = "results"
 output_dir = "comparative_graphs"
 os.makedirs(output_dir, exist_ok=True)
-# network_types = ["ann", "kan", "kan_koopman", "koopman", "mamba"]
-network_types = ["ann", "kan", "kan_koopman", "koopman"]
+# network_types = ["ann", "kan", "chebyshev_kan", "fractional_kan", "kan_koopman", "koopman", "mamba"]
+network_types = ["ann", "kan", "chebyshev_kan", "fractional_kan", "kan_koopman", "koopman"]
 
 
 def get_experiment_type(log_path):

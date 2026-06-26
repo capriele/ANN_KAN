@@ -145,6 +145,7 @@ class Options:
         self.min_delta = 0.001  # 0.0000001
         self.modelSelector = False
         self.modelKind = "ann"
+        self.kan_family = "spline"
         self.testName = "Test"
 
 
@@ -248,6 +249,7 @@ if __name__ == "__main__":
             print("Enable KAN model")
             Option.modelSelector = 1
             Option.modelKind = "kan"
+            Option.kan_family = "spline"
             Option.n_neurons = 7
             Option.n_layers = 2
             Option.min_delta = 0.0000001
@@ -262,6 +264,7 @@ if __name__ == "__main__":
             print("Enable KAN + Koopman model")
             Option.modelSelector = 3
             Option.modelKind = "kan_koopman"
+            Option.kan_family = "spline"
             Option.n_neurons = 7
             Option.n_layers = 2
             Option.min_delta = 0.0000001
@@ -282,6 +285,24 @@ if __name__ == "__main__":
             print("Enable Mixed model")
             Option.modelSelector = 5
             Option.modelKind = "mixed"
+        elif int(sys.argv[10]) == 6:
+            print("Enable Chebyshev KAN model")
+            Option.modelSelector = 6
+            Option.modelKind = "chebyshev_kan"
+            Option.kan_family = "chebyshev"
+            Option.n_neurons = 7
+            Option.n_layers = 2
+            Option.min_delta = 0.0000001
+            Option.epochs = 300
+        elif int(sys.argv[10]) == 7:
+            print("Enable Fractional KAN model")
+            Option.modelSelector = 7
+            Option.modelKind = "fractional_kan"
+            Option.kan_family = "fractional"
+            Option.n_neurons = 7
+            Option.n_layers = 2
+            Option.min_delta = 0.0000001
+            Option.epochs = 300
         else:
             Option.modelKind = "ann"
             Option.modelSelector = False
@@ -318,6 +339,7 @@ if __name__ == "__main__":
         outputSize=Option.outputSize,
         batch_size=Option.batch_size,
         modelSelector=Option.modelSelector,
+        kan_family=Option.kan_family,
     )
     model.setDataset(U_n.copy(), Y_n.copy(), U_Vn.copy(), Y_Vn.copy())
 

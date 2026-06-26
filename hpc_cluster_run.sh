@@ -129,6 +129,26 @@ elif [ "$last_arg" = "5" ]; then
     mkdir -p "results/${model_type}/${exp_name}/closed_loop"
     filename="results/${model_type}/${exp_name}/log.txt"
 
+elif [ "$last_arg" = "6" ]; then
+    model_type="chebyshev_kan"
+    if [ -d "results/${model_type}/${exp_name}" ]; then
+        exp_name=$(generate_new_exp_name "$exp_name" "$model_type")
+    fi
+    mkdir -p "results/${model_type}/${exp_name}"
+    mkdir -p "results/${model_type}/${exp_name}/open_loop"
+    mkdir -p "results/${model_type}/${exp_name}/closed_loop"
+    filename="results/${model_type}/${exp_name}/log.txt"
+
+elif [ "$last_arg" = "7" ]; then
+    model_type="fractional_kan"
+    if [ -d "results/${model_type}/${exp_name}" ]; then
+        exp_name=$(generate_new_exp_name "$exp_name" "$model_type")
+    fi
+    mkdir -p "results/${model_type}/${exp_name}"
+    mkdir -p "results/${model_type}/${exp_name}/open_loop"
+    mkdir -p "results/${model_type}/${exp_name}/closed_loop"
+    filename="results/${model_type}/${exp_name}/log.txt"
+
 else
     model_type="ann"
     if [ -d "results/${model_type}/${exp_name}" ]; then
@@ -151,6 +171,8 @@ case "$last_arg" in
     3) method="kan_koopman" ;;
     4) method="mamba" ;;
     5) method="mixed" ;;
+    6) method="chebyshev_kan" ;;
+    7) method="fractional_kan" ;;
     *) method="ann" ;;
 esac
 
