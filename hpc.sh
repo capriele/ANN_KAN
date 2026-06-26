@@ -86,7 +86,23 @@ bash hpc_ann.sh
 #################################
 ## The same tasks but with KAN ##
 #################################
-bash hpc_kan.sh
+
+###########################################
+## The same tasks but with KAN CHEBYSHEV ##
+###########################################
+#sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV "7 7 1 6 15 1 0 0 6"
+sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 6"
+#sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET2 "7 10 1 6 15 1 0 0 6"
+bash hpc_kan_chebyshev.sh
+
+
+########################################
+## The same tasks but with KAN JACOBI ##
+########################################
+#sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV "7 7 1 6 15 1 0 0 7"
+sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET "7 8 1 6 15 1 0 0 7"
+#sbatch --partition=gprod_gssi -N 1 --ntasks=1 --cpus-per-task=64 --mem=120GB hpc_cluster_run.sh AUV_DATASET2 "7 10 1 6 15 1 0 0 7"
+bash hpc_kan_jacobi.sh
 
 #####################################
 ## The same tasks but with Koopman ##
