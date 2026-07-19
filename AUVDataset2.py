@@ -164,20 +164,21 @@ class AUVDataset2:
         print(y_n.shape)
         print(u_n.shape)
 
-        # # Normalize data
-        # self.meanY = np.mean(y_n, axis=0)
-        # self.meanU = np.mean(u_n, axis=0)
-        # self.stdY = np.std(y_n, axis=0)
-        # self.stdU = np.std(u_n, axis=0)
+        # Use training statistics for both splits. The input channels have very
+        # different physical scales, which destabilizes affine state rollouts.
+        self.meanY = np.mean(y_n, axis=0)
+        self.meanU = np.mean(u_n, axis=0)
+        self.stdY = np.std(y_n, axis=0)
+        self.stdU = np.std(u_n, axis=0)
 
-        # # Avoid division by zero
-        # self.stdY[self.stdY == 0] = 1.0
-        # self.stdU[self.stdU == 0] = 1.0
+        eps = np.finfo(np.float64).eps
+        self.stdY[self.stdY < eps] = 1.0
+        self.stdU[self.stdU < eps] = 1.0
 
-        # y_n = (y_n - self.meanY) / self.stdY
-        # y_Vn = (y_Vn - self.meanY) / self.stdY
-        # u_n = (u_n - self.meanU) / self.stdU
-        # u_Vn = (u_Vn - self.meanU) / self.stdU
+        y_n = (y_n - self.meanY) / self.stdY
+        y_Vn = (y_Vn - self.meanY) / self.stdY
+        u_n = (u_n - self.meanU) / self.stdU
+        u_Vn = (u_Vn - self.meanU) / self.stdU
 
         # Reshape for training/validation
         return (

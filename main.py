@@ -8,6 +8,7 @@ import warnings
 import scipy.io
 import time
 import sys
+import argparse
 from scipy import optimize
 from AdvAutoencoder import AdvAutoencoder, DatasetLoadUtility
 from DynamicalSystem import LinearSystem
@@ -137,16 +138,209 @@ class Options:
         self.inputSize = 1
         self.outputSize = 1
         self.outputWindowLen = 2
-        self.n_layers = 3
-        self.n_neurons = 30
         self.epochs = 150
         self.batch_size = 24 * 2
         self.early_stopping_patience = 8
-        self.min_delta = 0.001  # 0.0000001
+        self.min_delta = 0.001
         self.modelSelector = False
         self.modelKind = "ann"
         self.kan_family = "spline"
         self.testName = "Test"
+        self.resultsPath = "results"
+
+
+DATASET_PRESETS = {
+    1: (lambda: SystemSelectorEnum().TWOTANKS, "TWOTANKS", True),
+    2: (lambda: SystemSelectorEnum().BILINEAR, "BILINEAR", True),
+    3: (lambda: SystemSelectorEnum.MAGNETO_dataset, "MAGNETO_dataset", False),
+    4: (lambda: SystemSelectorEnum.TANKS_dataset, "TANKS_dataset", False),
+    5: (lambda: SystemSelectorEnum.SILVERBOX_dataset, "SILVERBOX_dataset", False),
+    6: (lambda: SystemSelectorEnum().SpacecraftNonlinearModel, "SpacecraftNonlinearModel", False),
+    7: (lambda: SystemSelectorEnum().AUVNonlinearModel, "AUVNonlinearModel", False),
+    8: (lambda: SystemSelectorEnum().AUVDatasetNonlinear, "AUVdatasetNonlinear", False),
+    9: (lambda: SystemSelectorEnum().AUVDataset2Nonlinear, "AUVdataset2Nonlinear", False),
+    10: (lambda: SystemSelectorEnum().AUVDataset2Nonlinear, "AUVdataset2Nonlinear", False),
+}
+
+MODEL_PRESETS = {
+    "ann": {"selector": False, "kind": "ann", "kan_family": "spline", "compact_kan": False},
+    "kan": {"selector": 1, "kind": "kan", "kan_family": "spline", "compact_kan": True},
+    "koopman": {"selector": 2, "kind": "koopman", "kan_family": "spline", "compact_kan": False},
+    "kan_koopman": {"selector": 3, "kind": "kan_koopman", "kan_family": "spline", "compact_kan": True},
+    "mamba": {"selector": 4, "kind": "mamba", "kan_family": "spline", "compact_kan": False},
+    "mixed": {"selector": 5, "kind": "mixed", "kan_family": "spline", "compact_kan": False},
+    "chebyshev_kan": {"selector": 6, "kind": "chebyshev_kan", "kan_family": "chebyshev", "compact_kan": True},
+    "fractional_kan": {"selector": 7, "kind": "fractional_kan", "kan_family": "fractional", "compact_kan": True},
+}
+
+MODEL_CODE_PRESETS = {
+    0: ("ann", False),
+    1: ("kan", False),
+    2: ("koopman", False),
+    3: ("kan_koopman", False),
+    4: ("mamba", False),
+    5: ("mixed", False),
+    6: ("chebyshev_kan", False),
+    7: ("fractional_kan", False),
+    8: ("kan", True),
+    9: ("kan_koopman", True),
+    10: ("chebyshev_kan", True),
+    11: ("fractional_kan", True),
+}
+
+
+def _as_int(value, default=None):
+    if value is None:
+        return default
+    return int(value)
+
+
+def _as_bool01(value, default=False):
+    if value is None:
+        return default
+    return bool(int(value))
+
+
+def apply_dataset_preset(option, dataset_id: int) -> None:
+    preset = DATASET_PRESETS.get(int(dataset_id))
+    if preset is None:
+        print(f"Unknown dataset id {dataset_id}; keeping default dataset.")
+        return
+    selector_factory, name, closed_loop = preset
+    option.dynamicalSystemSelector = selector_factory()
+    option.stringDynamicalSystemSelector = name
+    option.closedLoopSim = closed_loop
+
+
+def apply_regularizer_mode(option, regularizer_mode: int) -> None:
+    if int(regularizer_mode) == 1:
+        option.affineStruct = False
+        option.useGroupLasso = True
+        option.stateReduction = True
+        option.regularizerWeight = 0.0003
+    elif int(regularizer_mode) == 2:
+        option.affineStruct = False
+        option.useGroupLasso = True
+        option.stateReduction = False
+        option.regularizerWeight = 0.0003
+    else:
+        option.useGroupLasso = False
+        option.regularizerWeight = 0.0001
+
+
+def apply_model_preset(option, model_kind: str, capacity_matched: bool = False) -> None:
+    aliases = {
+        "spline": "kan",
+        "chebyshev": "chebyshev_kan",
+        "cheby": "chebyshev_kan",
+        "fractional": "fractional_kan",
+        "jacobi": "fractional_kan",
+    }
+    model_kind = aliases.get((model_kind or "ann").lower(), (model_kind or "ann").lower())
+    preset = MODEL_PRESETS.get(model_kind, MODEL_PRESETS["ann"])
+    option.modelSelector = preset["selector"]
+    option.modelKind = preset["kind"]
+    option.kan_family = preset["kan_family"]
+
+    # The old scripts used small KANs for non-capacity-matched codes 1/3/6/7.
+    if preset["compact_kan"] and not capacity_matched:
+        option.min_delta = 0.00001
+        option.epochs = 300
+
+
+def parse_options_from_cli(option, argv) -> None:
+    parser = argparse.ArgumentParser(add_help=True)
+    parser.add_argument("legacy", nargs="*", help="Backward-compatible positional args from old hpc_cluster_run.sh")
+    parser.add_argument("--fit-horizon", type=int)
+    parser.add_argument("--dataset-id", type=int)
+    parser.add_argument("--nonlinear-input", type=int)
+    parser.add_argument("--state-size", type=int)
+    parser.add_argument("--stride-len", type=int)
+    parser.add_argument("--affine-struct", type=int)
+    parser.add_argument("--regularizer-mode", type=int)
+    parser.add_argument("--n-neurons", type=int)
+    parser.add_argument("--n-layers", type=int)
+    parser.add_argument("--model-code", type=int)
+    parser.add_argument("--model-kind", choices=sorted(MODEL_PRESETS.keys()))
+    parser.add_argument("--kan-family", choices=["spline", "chebyshev", "fractional"])
+    parser.add_argument("--capacity-matched", action="store_true")
+    parser.add_argument("--test-name")
+    parser.add_argument("--results-path")
+    args = parser.parse_args(argv)
+
+    # Legacy format: ignored_run_id fit dataset nonlin state stride affine reg unused model_code test_name
+    # Extended format: ignored_run_id fit dataset nonlin state stride affine reg neurons layers model_code test_name
+    legacy = args.legacy
+    if legacy and args.fit_horizon is None:
+        if len(legacy) > 1:
+            args.fit_horizon = _as_int(legacy[1])
+        if len(legacy) > 2:
+            args.dataset_id = _as_int(legacy[2])
+        if len(legacy) > 3:
+            args.nonlinear_input = _as_int(legacy[3])
+        if len(legacy) > 4:
+            args.state_size = _as_int(legacy[4])
+        if len(legacy) > 5:
+            args.stride_len = _as_int(legacy[5])
+        if len(legacy) > 6:
+            args.affine_struct = _as_int(legacy[6])
+        if len(legacy) > 7:
+            args.regularizer_mode = _as_int(legacy[7])
+        if len(legacy) >= 12:
+            args.n_neurons = _as_int(legacy[8])
+            args.n_layers = _as_int(legacy[9])
+            args.model_code = _as_int(legacy[10])
+        elif len(legacy) > 9:
+            args.model_code = _as_int(legacy[9])
+        if len(legacy) > 10:
+            args.test_name = legacy[-1]
+
+    if args.fit_horizon is not None:
+        option.fitHorizon = args.fit_horizon
+    if args.dataset_id is not None:
+        apply_dataset_preset(option, args.dataset_id)
+    if args.nonlinear_input is not None:
+        option.nonLinearInputChar = _as_bool01(args.nonlinear_input)
+    if args.state_size is not None:
+        option.stateSize = args.state_size
+    if args.stride_len is not None:
+        option.n_a = args.stride_len
+    if args.affine_struct is not None:
+        option.affineStruct = _as_bool01(args.affine_struct)
+    if args.regularizer_mode is not None:
+        apply_regularizer_mode(option, args.regularizer_mode)
+
+    if args.model_code is not None:
+        model_kind, capacity = MODEL_CODE_PRESETS.get(args.model_code, ("ann", False))
+        apply_model_preset(option, model_kind, capacity_matched=capacity)
+    elif args.model_kind is not None:
+        apply_model_preset(option, args.model_kind, capacity_matched=args.capacity_matched)
+
+    if args.n_neurons is not None:
+        if args.n_neurons < 1:
+            parser.error("--n-neurons must be greater than zero")
+        option.n_neurons = args.n_neurons
+    if args.n_layers is not None:
+        if args.n_layers < 1:
+            parser.error("--n-layers must be greater than zero")
+        option.n_layers = args.n_layers
+
+    if args.kan_family is not None:
+        option.kan_family = args.kan_family
+    if args.test_name is not None:
+        option.testName = args.test_name
+    if args.results_path is not None:
+        option.resultsPath = args.results_path
+    else:
+        option.resultsPath = "results"
+
+    print("Resolved options:")
+    for key in [
+        "fitHorizon", "stringDynamicalSystemSelector", "nonLinearInputChar", "stateSize",
+        "n_a", "affineStruct", "useGroupLasso", "stateReduction", "modelKind",
+        "modelSelector", "kan_family", "n_neurons", "n_layers", "epochs", "testName",
+    ]:
+        print(f"  {key}: {getattr(option, key)}")
 
 
 if __name__ == "__main__":
@@ -156,163 +350,7 @@ if __name__ == "__main__":
     # %% Parameter parsing
     print("Epochs", Option.epochs)
     print("Parameters", sys.argv)
-    if len(sys.argv) > 2:
-        print(f"Option.fitHorizon = {int(sys.argv[2])}")
-        Option.fitHorizon = int(sys.argv[2])
-
-    if len(sys.argv) > 3:
-        print(f"Option.dynamicalSystemSelector = {int(sys.argv[3])}")
-        if int(sys.argv[3]) == 1:
-            Option.dynamicalSystemSelector = SystemSelectorEnum().TWOTANKS
-            Option.stringDynamicalSystemSelector = "TWOTANKS"
-        elif int(sys.argv[3]) == 2:
-            # It's actually the hammerstein-wiener! But the old name stuck
-            Option.dynamicalSystemSelector = SystemSelectorEnum().BILINEAR
-            Option.stringDynamicalSystemSelector = "BILINEAR"
-        elif int(sys.argv[3]) == 3:
-            Option.dynamicalSystemSelector = SystemSelectorEnum.MAGNETO_dataset
-            Option.stringDynamicalSystemSelector = "MAGNETO_dataset"
-            Option.closedLoopSim = False
-        elif int(sys.argv[3]) == 4:
-            Option.dynamicalSystemSelector = SystemSelectorEnum.TANKS_dataset
-            Option.stringDynamicalSystemSelector = "TANKS_dataset"
-            Option.closedLoopSim = False
-        elif int(sys.argv[3]) == 5:
-            Option.dynamicalSystemSelector = SystemSelectorEnum.SILVERBOX_dataset
-            Option.stringDynamicalSystemSelector = "SILVERBOX_dataset"
-            Option.closedLoopSim = False
-        elif int(sys.argv[3]) == 6:
-            Option.dynamicalSystemSelector = (
-                SystemSelectorEnum().SpacecraftNonlinearModel
-            )
-            Option.stringDynamicalSystemSelector = "SpacecraftNonlinearModel"
-            Option.closedLoopSim = False
-        elif int(sys.argv[3]) == 7:
-            Option.dynamicalSystemSelector = SystemSelectorEnum().AUVNonlinearModel
-            Option.stringDynamicalSystemSelector = "AUVNonlinearModel"
-            Option.closedLoopSim = False
-        elif int(sys.argv[3]) == 8:
-            Option.dynamicalSystemSelector = SystemSelectorEnum().AUVDatasetNonlinear
-            Option.stringDynamicalSystemSelector = "AUVdatasetNonlinear"
-            Option.closedLoopSim = False
-        elif int(sys.argv[3]) == 9:
-            Option.dynamicalSystemSelector = SystemSelectorEnum().AUVDataset2Nonlinear
-            Option.stringDynamicalSystemSelector = "AUVdataset2Nonlinear"
-            Option.closedLoopSim = False
-        elif int(sys.argv[3]) == 10:
-            Option.dynamicalSystemSelector = SystemSelectorEnum().AUVDataset2Nonlinear
-            Option.stringDynamicalSystemSelector = "AUVdataset2Nonlinear"
-            Option.closedLoopSim = False
-
-    if len(sys.argv) > 4:
-        print(f"Option.nonLinearInputChar = {int(sys.argv[4])}")
-        if int(sys.argv[4]) == 1:
-            Option.nonLinearInputChar = True
-        else:
-            Option.nonLinearInputChar = False
-
-    if len(sys.argv) > 5:
-        print(f"Option.stateSize = {int(sys.argv[5])}")
-        Option.stateSize = int(sys.argv[5])
-
-    if len(sys.argv) > 6:
-        print(f"Option.n_a = {int(sys.argv[6])}")
-        Option.n_a = int(sys.argv[6])
-
-    if len(sys.argv) > 7:
-        print(f"Option.affineStruct = {int(sys.argv[7])}")
-        if int(sys.argv[7]) == 1:
-            Option.affineStruct = True
-        else:
-            Option.affineStruct = False
-
-    if len(sys.argv) > 8:
-        if int(sys.argv[8]) == 1:
-            Option.affineStruct = False
-            Option.useGroupLasso = True
-            Option.stateReduction = True
-            Option.regularizerWeight = 0.0003
-        elif int(sys.argv[8]) == 2:
-            Option.useGroupLasso = True
-            Option.affineStruct = False
-            Option.stateReduction = not True
-            Option.regularizerWeight = 0.0003
-        else:
-            Option.useGroupLasso = False
-            Option.regularizerWeight = 0.0001
-            pass
-        print(float(sys.argv[8]))
-
-    # Check KAN mode flag
-    if len(sys.argv) > 10:
-        if int(sys.argv[10]) == 1:
-            print("Enable KAN model")
-            Option.modelSelector = 1
-            Option.modelKind = "kan"
-            Option.kan_family = "spline"
-            Option.n_neurons = 7
-            Option.n_layers = 2
-            Option.min_delta = 0.0000001
-            print(f"Option.n_neurons: {Option.n_neurons}")
-            print(f"Option.n_layers: {Option.n_layers}")
-            Option.epochs = 300
-        elif int(sys.argv[10]) == 2:
-            print("Enable Koopman model")
-            Option.modelSelector = 2
-            Option.modelKind = "koopman"
-        elif int(sys.argv[10]) == 3:
-            print("Enable KAN + Koopman model")
-            Option.modelSelector = 3
-            Option.modelKind = "kan_koopman"
-            Option.kan_family = "spline"
-            Option.n_neurons = 7
-            Option.n_layers = 2
-            Option.min_delta = 0.0000001
-            print(f"Option.n_neurons: {Option.n_neurons}")
-            print(f"Option.n_layers: {Option.n_layers}")
-
-            # Use these parameters only for koopman base symbolic representation
-            # Option.n_neurons = 2
-            # Option.n_layers = 1
-            # Option.min_delta = 0.000001  # 0.0000001  # 0.001
-
-            Option.epochs = 300
-        elif int(sys.argv[10]) == 4:
-            print("Enable Mamba model")
-            Option.modelSelector = 4
-            Option.modelKind = "mamba"
-        elif int(sys.argv[10]) == 5:
-            print("Enable Mixed model")
-            Option.modelSelector = 5
-            Option.modelKind = "mixed"
-        elif int(sys.argv[10]) == 6:
-            print("Enable Chebyshev KAN model")
-            Option.modelSelector = 6
-            Option.modelKind = "chebyshev_kan"
-            Option.kan_family = "chebyshev"
-            Option.n_neurons = 7
-            Option.n_layers = 2
-            Option.min_delta = 0.0000001
-            Option.epochs = 300
-        elif int(sys.argv[10]) == 7:
-            print("Enable Fractional KAN model")
-            Option.modelSelector = 7
-            Option.modelKind = "fractional_kan"
-            Option.kan_family = "fractional"
-            Option.n_neurons = 7
-            Option.n_layers = 2
-            Option.min_delta = 0.0000001
-            Option.epochs = 300
-        else:
-            Option.modelKind = "ann"
-            Option.modelSelector = False
-        print(f"Option.modelKind = {Option.modelKind}")
-        print(f"Option.modelSelector = {Option.modelSelector}")
-
-    # Find model test name
-    if len(sys.argv) > 11:
-        print(f"Option.testName = {str(sys.argv[-1])}")
-        Option.testName = str(sys.argv[-1])
+    parse_options_from_cli(Option, sys.argv[1:])
 
     warnings.filterwarnings("ignore")
 
@@ -339,6 +377,7 @@ if __name__ == "__main__":
         outputSize=Option.outputSize,
         batch_size=Option.batch_size,
         modelSelector=Option.modelSelector,
+        modelKind=Option.modelKind,
         kan_family=Option.kan_family,
     )
     model.setDataset(U_n.copy(), Y_n.copy(), U_Vn.copy(), Y_Vn.copy())
@@ -359,7 +398,7 @@ if __name__ == "__main__":
     )
     torch.save(
         model.model.state_dict(),
-        f"results/{Option.modelKind}/{Option.testName}/model.pth",
+        f"{Option.resultsPath}/{Option.modelKind}/{Option.testName}/model.pth",
     )
 
     # After the training in the case of KAN blocks try to find symbolic identificaition
@@ -387,8 +426,8 @@ if __name__ == "__main__":
     # model.model, _, _, _ = model.ANNModel()
     # model.model.load_state_dict(
     #     torch.load(
-    #         f"results/{Option.modelKind}/{Option.testName}/model.pth",
-    #         #f"results/ann/AUV_DATASET_15/model.pth",
+    #         f"{Option.resultsPath}/{Option.modelKind}/{Option.testName}/model.pth",
+    #         #f"{Option.resultsPath}/ann/AUV_DATASET_15/model.pth",
     #         map_location=torch.device("cpu"),
     #         weights_only=False,
     #     ),
@@ -623,17 +662,17 @@ if __name__ == "__main__":
 
         # === Save individual CSV files ===
         np.savetxt(
-            f"results/{Option.modelKind}/{Option.testName}/logX.csv",
+            f"{Option.resultsPath}/{Option.modelKind}/{Option.testName}/logX.csv",
             logX1,
             delimiter=",",
         )
         np.savetxt(
-            f"results/{Option.modelKind}/{Option.testName}/logY.csv",
+            f"{Option.resultsPath}/{Option.modelKind}/{Option.testName}/logY.csv",
             logY1,
             delimiter=",",
         )
         np.savetxt(
-            f"results/{Option.modelKind}/{Option.testName}/logU.csv",
+            f"{Option.resultsPath}/{Option.modelKind}/{Option.testName}/logU.csv",
             logU1,
             delimiter=",",
         )
@@ -655,7 +694,7 @@ if __name__ == "__main__":
             )
 
             np.savetxt(
-                f"results/{Option.modelKind}/{Option.testName}/logs_combined_{validationOnMultiHarmonic}_{_reset}.csv",
+                f"{Option.resultsPath}/{Option.modelKind}/{Option.testName}/logs_combined_{validationOnMultiHarmonic}_{_reset}.csv",
                 combined,
                 delimiter=",",
                 header=header,
@@ -671,7 +710,7 @@ if __name__ == "__main__":
         if b == 0:
             b = 1
         fit = 1 - (a / b)
-        NRMSE = 1 - np.sqrt(np.mean(np.square(np.array(logY) - np.array(logYR)))) / (
+        NRMSE = np.sqrt(np.mean(np.square(np.array(logY) - np.array(logYR)))) / (
             np.max(logYR) - np.min(logYR)
         )
         fit = np.max([0, fit])

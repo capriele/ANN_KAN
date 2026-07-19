@@ -119,6 +119,11 @@ class BridgeNetwork(nn.Module):
         self.bridge_bias = nn.Linear(n_neurons, state_size)
         if affine_struct:
             self.bridge_f = nn.Linear(n_neurons, state_size * (state_size + N_U))
+            # AB(x) @ x is bilinear and is recursively evaluated during the
+            # rollout. Start this branch close to zero to avoid an overflow
+            # before the first optimizer step while retaining trainable weights.
+            nn.init.xavier_uniform_(self.bridge_f.weight, gain=1e-2)
+            nn.init.zeros_(self.bridge_f.bias)
 
     def forward(self, inputs_novelU: torch.Tensor, inputs_state: torch.Tensor) -> Union[
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor],

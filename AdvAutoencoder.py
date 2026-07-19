@@ -4,6 +4,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
 import time
+import copy
 import scipy.io
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
@@ -24,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor
 import psutil
 
 # Fix the random seed
-np.random.seed(1)
+#np.random.seed(1)
 
 
 class EarlyStopping:
@@ -76,6 +77,7 @@ class AdvAutoencoder(nn.Module):
         regularizerWeight=0.0005,
         batch_size=24,
         modelSelector=False,
+        modelKind=None,
         kan_family="spline",
     ):
         super(AdvAutoencoder, self).__init__()
@@ -99,8 +101,9 @@ class AdvAutoencoder(nn.Module):
         self.shuffledIndexes = None
         self.constraintOnInputHiddenLayer = None
         self.batch_size = batch_size
-        self.modelSelector = modelSelector
-        self.kan_family = kan_family
+        self.modelKind = self._normalize_model_kind(modelKind, modelSelector, kan_family)
+        self.modelSelector = self._selector_from_model_kind(self.modelKind, modelSelector)
+        self.kan_family = self._family_from_model_kind(self.modelKind, kan_family)
         self.trainableParameters = 0
         if useGroupLasso and regularizerWeight > 0.0:
             # self.constraintOnInputHiddenLayer=unit_norm();
@@ -121,12 +124,53 @@ class AdvAutoencoder(nn.Module):
         else:
             self.inputLayerRegularizer = self.kernel_regularizer
 
-    def _active_kan_family(self):
-        if self.modelSelector == 6:
+    @staticmethod
+    def _normalize_model_kind(modelKind=None, modelSelector=False, kan_family="spline"):
+        if modelKind:
+            aliases = {
+                "spline": "kan",
+                "chebyshev": "chebyshev_kan",
+                "cheby": "chebyshev_kan",
+                "fractional": "fractional_kan",
+                "jacobi": "fractional_kan",
+            }
+            return aliases.get(str(modelKind).lower(), str(modelKind).lower())
+        selector_map = {
+            False: "ann", 0: "ann", 1: "kan", 2: "koopman", 3: "kan_koopman",
+            4: "mamba", 5: "mixed", 6: "chebyshev_kan", 7: "fractional_kan",
+        }
+        if modelSelector in selector_map:
+            return selector_map[modelSelector]
+        family = (kan_family or "spline").lower()
+        if family == "chebyshev":
+            return "chebyshev_kan"
+        if family == "fractional":
+            return "fractional_kan"
+        return "kan" if modelSelector else "ann"
+
+    @staticmethod
+    def _selector_from_model_kind(modelKind, fallback=False):
+        selector_map = {
+            "ann": False, "kan": 1, "koopman": 2, "kan_koopman": 3,
+            "mamba": 4, "mixed": 5, "chebyshev_kan": 6, "fractional_kan": 7,
+        }
+        return selector_map.get(modelKind, fallback)
+
+    @staticmethod
+    def _family_from_model_kind(modelKind, fallback="spline"):
+        if modelKind == "chebyshev_kan":
             return "chebyshev"
-        if self.modelSelector == 7:
+        if modelKind == "fractional_kan":
             return "fractional"
+        if modelKind in ("kan", "kan_koopman"):
+            return fallback or "spline"
+        return fallback or "spline"
+
+    def _active_kan_family(self):
         return self.kan_family
+
+    def _uses_kan_ann(self):
+        return self.modelKind in ("kan", "chebyshev_kan", "fractional_kan")
 
     def mean_pred(self, y_pred, y_true):
         return torch.mean(y_pred**2)
@@ -144,7 +188,7 @@ class AdvAutoencoder(nn.Module):
             self.Y_val = Y_val.copy()
 
     def encoderNetwork(self, future=0):
-        if self.modelSelector in (1, 6, 7):
+        if self._uses_kan_ann():
             en = ann_kan.EncoderNetwork(
                 stride_len=self.strideLen,
                 n_u=self.N_U,
@@ -238,7 +282,7 @@ class AdvAutoencoder(nn.Module):
         return en
 
     def decoderNetwork(self, future=0):
-        if self.modelSelector in (1, 6, 7):
+        if self._uses_kan_ann():
             dn = ann_kan.DecoderNetwork(
                 state_size=self.stateSize,
                 n_neurons=self.n_neurons,
@@ -302,7 +346,7 @@ class AdvAutoencoder(nn.Module):
         return dn
 
     def bridgeNetwork(self, alpha=0.5, future=0):
-        if self.modelSelector in (1, 6, 7):
+        if self._uses_kan_ann():
             bn = ann_kan.BridgeNetwork(
                 state_size=self.stateSize,
                 N_U=self.N_U,
@@ -378,7 +422,7 @@ class AdvAutoencoder(nn.Module):
         bridgeNetwork = self.bridgeNetwork(alpha=alpha).to(device)
         convEncoder = self.encoderNetwork().to(device)
         outputEncoder = self.decoderNetwork().to(device)
-        if self.modelSelector in (1, 6, 7):
+        if self._uses_kan_ann():
             ann = ann_kan.ANNModel(
                 stride_len=self.strideLen,
                 max_range=self.MaxRange,

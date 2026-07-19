@@ -467,6 +467,14 @@ if __name__ == "__main__":
     def openLoopValidation(
         validationOnMultiHarmonic=True, _reset=-1, YTrue=None, U_Vn=None
     ):
+        def sanitize_tensor(name, tensor, step, clamp=1e3):
+            if not torch.isfinite(tensor).all():
+                print(f"\nWarning: non-finite {name} detected at step {step}.")
+                tensor = torch.nan_to_num(
+                    tensor, nan=0.0, posinf=clamp, neginf=-clamp
+                )
+            return torch.clamp(tensor, min=-clamp, max=clamp)
+
         openLoopStartingPoint = Option.openLoopStartingPoint
         pastY = torch.zeros((model.strideLen, Option.outputSize)).to(device)
         pastU = torch.zeros((model.strideLen, Option.inputSize)).to(device)
@@ -483,6 +491,7 @@ if __name__ == "__main__":
             pastY.reshape(1, -1),
             pastU.reshape(1, -1),
         )
+        x0 = sanitize_tensor("encoder state", x0, step=-1)
         for i in range(0, finalRange):
             # Default construction of u as a vector with shape (Option.inputSize, 1)
             u_scalar = 0.5 * np.sin(i / (20 + 0.01 * i)) + 0.5
@@ -490,7 +499,7 @@ if __name__ == "__main__":
             u = np.full((1, Option.inputSize), u_scalar)
 
             if not validationOnMultiHarmonic:
-                u = np.reshape(U_Vn[i], (1, Option.inputSize))  # Ensure u is reshaped
+                u = np.reshape(U_Vn[i], (1, Option.inputSize))
 
             if YTrue is None:
                 y_kReal, x0RealSystem_ = simulatedSystem.loop(x0RealSystem, u)
@@ -522,6 +531,7 @@ if __name__ == "__main__":
                     torch.tensor(pastY, dtype=torch.float32).reshape(1, -1).to(device),
                     torch.tensor(pastU, dtype=torch.float32).reshape(1, -1).to(device),
                 )
+                x0 = sanitize_tensor("reset encoder state", x0, step=i)
                 print("*", end="")
             else:
                 _u = torch.tensor(u, dtype=torch.float32).reshape(1, Option.inputSize)
@@ -532,10 +542,12 @@ if __name__ == "__main__":
                     _u.to(device),
                     _x0.to(device),
                 )[0]
+                x0 = sanitize_tensor("bridge state", x0, step=i)
 
             # print(x0.shape)
 
             y = model.model.output_decoder(x0)[1]
+            y = sanitize_tensor("decoder output", y, step=i)
             if i >= openLoopStartingPoint:
                 logY += [
                     np.reshape(
@@ -546,8 +558,22 @@ if __name__ == "__main__":
                 logU += [u]
             print(".", end="")
         print("\n")
-        logY = np.array(logY[:-1])
-        logYR = np.array(logYR[:-1])
+        logY = np.array(logY[:-1], dtype=np.float64)
+        logYR = np.array(logYR[:-1], dtype=np.float64)
+
+        valid_mask = np.isfinite(logY) & np.isfinite(logYR)
+        valid_rows = valid_mask.reshape(valid_mask.shape[0], -1).all(axis=1)
+        if not np.all(valid_rows):
+            invalid_count = int((~valid_rows).sum())
+            print(
+                f"Warning: dropping {invalid_count} non-finite rollout samples before metric computation."
+            )
+            logY = logY[valid_rows]
+            logYR = logYR[valid_rows]
+
+        if logY.size == 0 or logYR.size == 0:
+            print("Warning: no valid rollout samples available for metric computation.")
+            return 0.0, 0.0, logY, logYR
 
         # Creazione della maschera per i valori non NaN
         # non_nan_mask = ~np.isnan(logY) & ~np.isnan(logYR)
@@ -557,14 +583,15 @@ if __name__ == "__main__":
         # logYR = logYR[non_nan_mask]
 
         # logYR = logYR.reshape(logYR.shape[0], 1)
-        a = np.linalg.norm(np.array(logY) - np.array(logYR))
-        b = np.linalg.norm(np.mean(np.array(logY)) - np.array(logYR))
-        if b == 0:
+        a = np.linalg.norm(logY - logYR)
+        b = np.linalg.norm(np.mean(logY) - logYR)
+        if (not np.isfinite(b)) or b <= 1e-12:
             b = 1
         fit = 1 - (a / b)
-        NRMSE = 1 - np.sqrt(np.mean(np.square(np.array(logY) - np.array(logYR)))) / (
-            np.max(logYR) - np.min(logYR)
-        )
+        yr_range = np.max(logYR) - np.min(logYR)
+        if (not np.isfinite(yr_range)) or yr_range <= 1e-12:
+            yr_range = 1
+        NRMSE = 1 - np.sqrt(np.mean(np.square(logY - logYR))) / yr_range
         fit = np.max([0, fit])
         NRMSE = np.max([0, NRMSE])
         print("fit: ", fit)
