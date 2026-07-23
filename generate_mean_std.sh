@@ -33,7 +33,10 @@
 python3 analyze_result.py --results-dir ./results_auv_model --model-kind chebyshev_kan --block-size 10 --experiment-name AUV
 python3 analyze_result.py --results-dir ./results_auv_model --model-kind fractional_kan --block-size 10 --experiment-name AUV
 python3 analyze_result.py --results-dir ./results_auv_model_tmp --model-kind kan --block-size 10 --experiment-name AUV
+python3 analyze_result.py --results-dir ./results_auv_model_equal_parameters --model-kind kan --block-size 10 --experiment-name AUV
 python3 analyze_result.py --results-dir ./results_auv_model --model-kind kan_koopman --block-size 10 --experiment-name AUV
+python3 analyze_result.py --results-dir ./results_equal_parameters2 --model-kind ann --block-size 10 --experiment-name AUV
+python3 analyze_result.py --results-dir ./results_equal_parameters2 --model-kind koopman --block-size 10 --experiment-name AUV
 python3 analyze_result.py --results-dir ./results_auv_model --model-kind ann --block-size 10 --experiment-name AUV
 python3 analyze_result.py --results-dir ./results_auv_model --model-kind koopman --block-size 10 --experiment-name AUV
 
@@ -42,6 +45,8 @@ python3 analyze_result.py --results-dir ./results_auv_model --model-kind chebysh
 python3 analyze_result.py --results-dir ./results_auv_model --model-kind fractional_kan --block-size 10 --experiment-name AUV_DATASET
 python3 analyze_result.py --results-dir ./results_auv_model --model-kind kan --block-size 10 --experiment-name AUV_DATASET
 python3 analyze_result.py --results-dir ./results_auv_model --model-kind kan_koopman --block-size 10 --experiment-name AUV_DATASET
+python3 analyze_result.py --results-dir ./results_equal_parameters2 --model-kind ann --block-size 10 --experiment-name AUV_DATASET
+python3 analyze_result.py --results-dir ./results_equal_parameters2 --model-kind koopman --block-size 10 --experiment-name AUV_DATASET
 python3 analyze_result.py --results-dir ./results_orig --model-kind ann --block-size 10 --experiment-name AUV_DATASET
 python3 analyze_result.py --results-dir ./results_orig --model-kind koopman --block-size 10 --experiment-name AUV_DATASET
 
@@ -49,7 +54,10 @@ python3 analyze_result.py --results-dir ./results_orig --model-kind koopman --bl
 python3 analyze_result.py --results-dir ./results_auv_model_tmp --model-kind chebyshev_kan --block-size 10 --experiment-name AUV_DATASET2
 python3 analyze_result.py --results-dir ./results_auv_model_tmp --model-kind fractional_kan --block-size 10 --experiment-name AUV_DATASET2
 python3 analyze_result.py --results-dir ./results_auv_model_tmp --model-kind kan --block-size 10 --experiment-name AUV_DATASET2
+python3 analyze_result.py --results-dir ./results_auv_model_parameters2 --model-kind kan --block-size 10 --experiment-name AUV_DATASET2
 python3 analyze_result.py --results-dir ./results_auv_model --model-kind kan_koopman --block-size 10 --experiment-name AUV_DATASET2
+python3 analyze_result.py --results-dir ./results_equal_parameters3 --model-kind ann --block-size 10 --experiment-name AUV_DATASET2
+python3 analyze_result.py --results-dir ./results_equal_parameters --model-kind koopman --block-size 10 --experiment-name AUV_DATASET2
 python3 analyze_result.py --results-dir ./results_auv_model --model-kind ann --block-size 10 --experiment-name AUV_DATASET2
 python3 analyze_result.py --results-dir ./results_auv_model --model-kind koopman --block-size 10 --experiment-name AUV_DATASET2
 
